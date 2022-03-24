@@ -1,0 +1,449 @@
+---
+title: "Clustering"
+author: "Nathan James Khadaroo-McCheyne"
+date: "3/14/2022"
+output: html_document
+---
+
+# Loading libraries:
+
+```{r}
+library(tidyverse)
+library(depmixS4)
+library(patchwork)
+```
+
+# Loading data:
+
+```{r, message=FALSE}
+data <- read_csv(here::here("Data",
+                          "base_file_all_final.csv"))
+```
+
+# Simple clusterings:
+
+## *Arbitrary thresholds:*
+
+```{r, message = FALSE, warning=FALSE}
+p1 <- data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 1, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5500, 500),
+                     limits = c(0, 5500))+
+  labs(x = "Engagement (threshold = 1)")+
+  theme_minimal()
+
+p2 <- data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 5, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5500, 500),
+                     limits = c(0, 5500))+
+  labs(x = "Engagement (threshold = 5)")+
+  theme_minimal()
+
+p3 <- data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 10, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5500, 500),
+                     limits = c(0, 5500))+
+  labs(x = "Engagement (threshold = 10)")+
+  theme_minimal()
+
+p4 <- data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 20, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  scale_y_continuous(breaks = seq(0, 5500, 500),
+                     limits = c(0, 5500))+
+  geom_bar()+
+  labs(x = "Engagement (threshold = 20)")+
+  theme_minimal()
+
+(p1 | p2 ) /
+(p3 | p4)
+```
+
+## *Kronkvist and Engstrom thresholds:*
+
+Kronkvist and Engstrom (2020) split their participants into abstainers, who completed zero assessments, dedicated participants who completed a number of assessments one standard deviation or more above the average number of assessments completed by participants, and occasional participants who did not meet the criteria for the two previous groups.
+
+```{r, message = FALSE, warning=FALSE}
+data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>%
+  summarise(mean = mean(n),
+            stdev = sd(n),
+            median = median(n))
+```
+
+The average number of submission per user is \~7 (6.997224), the standard deviation of reports is \~31 (31.11953). This gives us:
+
+| Engagement | n    |
+|------------|------|
+| high       | 216  |
+| low        | 5187 |
+
+I made a quick bar chart of high vs low engagement users according to this approach (ignoring people with zero contributions who are not in the data).
+
+```{r, message = FALSE, warning=FALSE}
+data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_kron = if_else(n > 38, "high", "low"))%>%
+  ggplot(aes(x = engagement_kron))+
+  geom_bar()+
+  theme_minimal()
+```
+
+Out of curiosity, I tried using the median instead of the mean, which gives::
+
+| Engagement | n    |
+|------------|------|
+| high       | 248  |
+| low        | 5155 |
+
+```{r, message = FALSE, warning=FALSE}
+data %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_kron = if_else(n > 32, "high", "low")) %>% 
+  ggplot(aes(x = engagement_kron))+
+  geom_bar()+
+  theme_minimal()
+```
+
+# Dependent mixture/hidden Markov models:
+
+## Functions:
+
+This function implements Markov mixture models via the expectation maximization algorithm:
+
+```{r}
+MarkovMixture <- function(x, D, K,
+                          maxits = 500,
+                          threshold = 1e-5,
+                          verbose = TRUE) {
+  # Based on
+  #   http://bariskurt.com/learning-markov-mixtures-with-em-derivationmatlab-code/
+  
+  # Inputs
+  #   x: list of sequences
+  #   D: dimension of state space
+  #   K: number of mixture components (clusters)
+  
+  # Optional inputs
+  #   maxits: maximum number of iterations
+  #   verbose: plot the log-likelihood
+  #   threshold: if decrease in log-lik is < threshold, stop
+  
+  N <- length(x)                                 # number of sequences
+  S <- array(NA, c(D, D, N),                     # transition counts
+             dimnames = list(from = NULL,
+                             to = NULL,
+                             sequence = 1:N))
+  x1 <- array(0, c(D, N))                        # initial states
+  
+  # Utility functions
+  count_transitions <- function(seq) {
+    # Contingency table of transitions
+    seq <- factor(seq, levels = 1:D)
+    t(table(head(seq, -1), tail(seq, -1))) # check: should this be transposed or not?
+  }
+  runif1 <- function(n) {
+    # Uniform vector that sums to 1
+    x <- runif(n)
+    x / sum(x)
+  }
+  log_ <- function(x, threshold = -500, ...) {
+    # Logarithm that avoids producing -Infs
+    lx <- log(x, ...)
+    lx[is.infinite(lx)] <- threshold
+    lx
+  }
+  normalise <- function(x) {
+    # Scale columns to sum to 1 and return in same layout
+    if (length(dim(x)) == 3) {
+      dm <- dim(x)
+      x <- apply(x, 3, function(y) scale(y, center = FALSE, scale = colSums(y)))
+      dim(x) <- dm
+    } else { x <- scale(x, center = FALSE, scale = colSums(x)) }
+    attr(x, 'scaled:scale') <- NULL
+    x
+  }
+  normalise_exp <- function(x) {
+    # Safely exponentiate and normalise by column
+    if (length(dim(x)) > 2) warning('untested in 3-d')
+    x <- apply(x, 2, function(y) y - max(y))
+    normalise(exp(x))
+  }
+  log_sum_exp <- function(x) max(x) + log(sum(exp(x - max(x))))
+  
+  # Sufficient statistics
+  for (n in 1:N) {
+    x1[x[[n]][1], n] <- 1 # initial state
+    S[, , n] <- count_transitions(x[[n]])
+  }
+  dim(S) <- c(D^2, N)
+  
+  # Random initialisation of model parameters
+  alpha <- runif1(K)                                   # prior p(z)
+  p1 <- replicate(K, runif1(D))                        # initial state distributions
+  A <- array(replicate(D * K, runif1(D)), c(D, D, K))  # transition distributions
+  
+  # Posterior of latent variables p(z|x); i.e. membership values
+  z <- array(NA, c(K, N))
+  
+  # Log likelihood
+  LL <- rep(NA, maxits)
+  
+  for (iter in 1:maxits) {
+    
+    log_p1 <- log_(p1)
+    log_A <- log_(A)
+    dim(log_A) <- c(D^2, K)
+    log_alpha <- log_(alpha)
+    
+    # Expectation step
+    llhood <- (t(log_p1) %*% x1) + (t(log_A) %*% S) + replicate(N, log_alpha)
+    z <- normalise_exp(llhood)
+    
+    # Likelihood
+    LL[iter] <- log_sum_exp(llhood)
+    
+    # Maximisation step
+    p1 <- normalise(x1 %*% t(z))
+    A <- normalise(array(S %*% t(z), c(D, D, K)))
+    alpha <- rowSums(z) / sum(z)
+    
+    if (verbose) message('K = ', K, '\t Iteration ', iter, '\t Log-likelihood ', LL[iter])
+    if (threshold > 0 && iter > 1 && (LL[iter] - LL[iter-1]) < threshold) {
+      LL <- LL[1:iter]
+      if (verbose) message('Converged with tolerance ', threshold)
+      break
+    } # /if
+    
+  } # /for
+  
+  dimnames(A) <- list(to = NULL, from = NULL, model = 1:K)
+  dimnames(p1) <- list(state = NULL, model = NULL)
+  dimnames(z) <- list(model = NULL, sequence = NULL)
+  
+  return(list(alpha = alpha,
+              p1 = p1,
+              A = A,
+              z = z,
+              LL = LL,
+              niters = iter,
+              K = K))
+  
+} # /fn
+```
+
+These helper functions assist in choosing the best fit. multiStartEM runs the expectation maximization algorithm n number of times and selects the model with the highest log-likelihood. output_clusters, matches the outputs to participants and optionally allows visualisation of the outputs
+
+```{r}
+multiStartEM <- function(n_runs, ...) {
+  # Run the EM algorithm multiple times and return the best run
+  results <- lapply(1:n_runs, function(r) MarkovMixture(...))
+  likelihoods <- sapply(results, function(run) tail(run$LL, 1))
+  best_run <- results[[which.max(likelihoods)]]
+  return(best_run)
+}
+
+output_clusters <- function(d, N = 50, plot = TRUE, hidden = FALSE, weight = NULL) {
+  df <- data.frame(user_id =  seq_data$user_id,
+                   prob = t(d$z),
+                   cluster = factor(apply(d$z, 2, which.max), levels = 1:d$K))
+  
+  sample_n_groups <- function(tbl, size, replace = FALSE, weight = NULL) {
+    # source: https://github.com/hadley/dplyr/issues/361
+    grps <- tbl %>% groups %>% unlist %>% as.character
+    keep <- tbl %>% summarise() %>% sample_n(size, replace, weight)
+    tbl %>% semi_join(keep) %>% group_by_(grps)
+  }
+  
+  if(plot) {
+    if(hidden) {
+      gg <- df %>%
+        group_by(user_id) %>%
+        sample_n_groups(N, weight = weight) %>%
+        inner_join(hidden_seq_df) %>%
+        group_by(user_id) %>%
+        mutate(dayOfStudy = 224 - n():1 + 1) %>%
+        ggplot() +
+          aes(dayOfStudy, factor(user_id, levels=unique(user_id[order(cluster, user_id)]))) +
+          ylab('user_id') + xlab('Day of study') + ggtitle(paste('K =', d$K, 'clusters')) +
+          geom_point(aes(alpha = factor(state, levels = 3:1), colour = cluster)) +
+          scale_colour_brewer(palette = 'Set1') +
+          scale_alpha_discrete(name = 'State')+
+        theme_minimal()
+    } else {
+      gg <- df %>%
+        inner_join(data %>% 
+   filter(version == "v2016")) %>%
+        group_by(user_id) %>%
+        sample_n_groups(N, weight = weight) %>%
+        distinct(date, .keep_all = TRUE) %>%
+        ggplot() +
+          aes(date, factor(user_id, levels = unique(user_id[order(cluster, user_id)]))) +
+          geom_point(aes(colour = cluster)) +
+          scale_colour_brewer(palette = 'Set1') +
+          ylab('user_id') + ggtitle(paste('K =', d$K, 'clusters'))+
+        theme_minimal()
+    }
+    print(gg)
+  }
+  return(df)
+}
+```
+
+## Year one:
+
+### Data prep:
+
+This creates a tibble with participant ID and then their sequence of contributions, 1 means they did not make a contribution on that day, 2 means they did (for some reason the algorithm doesn't like this being 0 and 1 ¯\\\_(ツ)\_/¯ ).
+
+```{r}
+ seq_data <- data %>% 
+   filter(version == "v2016") %>%
+   group_by(user_id) %>% 
+   distinct(date)%>%
+  do(sequence = as.numeric(seq.Date(min(.$date),
+                            as.Date('2016-11-03'),
+                            by = '1 day') %in% .$date) + 1)
+ 
+dataSequence_concat <- unlist(seq_data$sequence) - 1 # 0 = no data; 1 = data
+dataSequence_lengths <- sapply(seq_data$sequence, length)
+```
+
+### Model fitting:
+
+First we fit a hidden markov model to the above sequences. In doing so, we are assuming these are generated by the participant being in either a highly engaged, lowly engaged, or unengaged state. We then assume this these assigned states are our true transition data and apply the Markov mixture model clustering to generate the clusters of engagement (a markov mixture model applied to the output of a hidden markov model is still a hidden markov model).
+
+Specifying the Hidden Markov Model using the depmixS4 package. The initial values sometimes need a little massaging to get the model to converge (this isn't inferential so dredging shouldn't be a concern).
+
+```{r}
+hmm <- depmix(dataSequence_concat ~ 1,
+              nstates = 3,
+              ntimes = dataSequence_lengths,
+              trstart = #c(1/2, 1/2, 0, # can't go directly high -> disengaged
+                        c(1/2, 3/8, 1/8, # can do so
+                        #  1/4, 1/2, 1/4, 
+                        1/6, 2/3, 1/6,
+                          0, 0, 1), # Disengaged is an absorbing state
+              respstart = c(0.7, 0.1, 1e-10), # Pr(enter data)
+              instart = c(1, 0, 0),
+              family = binomial())
+```
+
+Then fitting the model via EM.
+
+```{r, message=FALSE, warning = FALSE}
+fittedHMM <- fit(hmm)
+
+
+summary(fittedHMM)
+
+
+hidden_seq_list <- fittedHMM@posterior$state %>%
+  split(rep(seq_data$user_id, dataSequence_lengths))
+
+hidden_seq_df <- hidden_seq_list %>%
+  plyr::ldply(data.frame, .id = 'user_id') %>%
+  rename('state' = X..i..) %>%
+  group_by(user_id)
+
+```
+
+Then fitting the markov mixture models on the output.
+
+#### k = 3
+
+```{r, message=FALSE}
+w <- as.numeric(1:4748 %in% sample(1:4748, 50, FALSE))
+
+EM_hid3 <- multiStartEM(20, hidden_seq_list, D = 3, K = 3)
+
+hid_clusters3 <- output_clusters(EM_hid3, hidden = TRUE, weight = w)
+```
+
+```{r}
+hid_clusters3 <- output_clusters(EM_hid3, hidden = FALSE, weight = w)
+```
+
+#### k = 4
+
+1.  <div>
+
+    ```{r, message=FALSE}
+    w <- as.numeric(1:4748 %in% sample(1:4748, 50, FALSE))
+
+    EM_hid4 <- multiStartEM(20, hidden_seq_list, D = 3, K = 4)
+
+    hid_clusters4 <- output_clusters(EM_hid4, hidden = TRUE, weight = w)
+    ```
+
+    </div>
+
+```{r}
+hid_clusters4 <- output_clusters(EM_hid4, hidden = FALSE, weight = w)
+```
+
+Using the elbow plot method to
+
+```{r, message = FALSE}
+
+EM_hid2 <- multiStartEM(20, hidden_seq_list, D = 3, K = 2)
+
+EM_hid5 <- multiStartEM(20, hidden_seq_list, D = 3, K = 5)
+
+Ks <- 6:10
+
+LL_by_K_hid <- c(tail(EM_hid2$LL, 1), tail(EM_hid3$LL, 1), tail(EM_hid4$LL, 1), tail(EM_hid5$LL, 1),
+                 sapply(Ks, function(k) tail(multiStartEM(20, hidden_seq_list, 3, k)$LL, 1)))
+
+choose_k_hidden <- data.frame(K = c(2:5, Ks), 'LL' = LL_by_K_hid)
+
+ggplot(choose_k_hidden) + aes(K, LL) + geom_line() + geom_point() +
+    xlab('Number of clusters') + ylab('Log-likelihood') +
+    theme_bw()
+
+ggsave("elbow7", plot = plot)
+```
+
+It seems like the most appropriate number of clusters is 4.
+
+```{r}
+saveRDS(EM_hid4,
+     file = here::here("Clusterings", "yr1_k4" ))
+     
+ saveRDS(hid_clusters4,
+     file =here::here("Clusterings", "yr1_k4_clusters" ))    
+```
+
+```{r}
+
+#df <- data.frame(user_id =  seq_data$user_id)
+#df %>%
+#  group_by(user_id) %>%
+#  inner_join(hidden_seq_df) %>%
+#  group_by(user_id) %>%
+#  mutate(dayOfStudy = 224 - n():1 + 1) %>% View()
+```
