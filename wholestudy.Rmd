@@ -1,139 +1,19 @@
 ---
-title: "Clustering"
+title: "whole study"
 author: "Nathan James Khadaroo-McCheyne"
-date: "3/14/2022"
+date: "3/20/2022"
 output: html_document
 ---
-
-# Loading libraries:
 
 ```{r}
 library(tidyverse)
 library(depmixS4)
-library(patchwork)
 ```
 
-# Loading data:
-
-```{r, message=FALSE}
+```{r}
 data <- read_csv(here::here("Data",
                           "base_file_all_final.csv"))
 ```
-
-# Simple clusterings:
-
-## *Arbitrary thresholds:*
-
-```{r, message = FALSE, warning=FALSE}
-p1 <- data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_threshold = if_else(n > 1, "high", "low")) %>%
-  ggplot(aes(x = engagement_threshold))+
-  geom_bar()+
-  scale_y_continuous(breaks = seq(0, 5500, 500),
-                     limits = c(0, 5500))+
-  labs(x = "Engagement (threshold = 1)")+
-  theme_minimal()
-
-p2 <- data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_threshold = if_else(n > 5, "high", "low")) %>%
-  ggplot(aes(x = engagement_threshold))+
-  geom_bar()+
-  scale_y_continuous(breaks = seq(0, 5500, 500),
-                     limits = c(0, 5500))+
-  labs(x = "Engagement (threshold = 5)")+
-  theme_minimal()
-
-p3 <- data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_threshold = if_else(n > 10, "high", "low")) %>%
-  ggplot(aes(x = engagement_threshold))+
-  geom_bar()+
-  scale_y_continuous(breaks = seq(0, 5500, 500),
-                     limits = c(0, 5500))+
-  labs(x = "Engagement (threshold = 10)")+
-  theme_minimal()
-
-p4 <- data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_threshold = if_else(n > 20, "high", "low")) %>%
-  ggplot(aes(x = engagement_threshold))+
-  scale_y_continuous(breaks = seq(0, 5500, 500),
-                     limits = c(0, 5500))+
-  geom_bar()+
-  labs(x = "Engagement (threshold = 20)")+
-  theme_minimal()
-
-(p1 | p2 ) /
-(p3 | p4)
-```
-
-## *Kronkvist and Engstrom thresholds:*
-
-Kronkvist and Engstrom (2020) split their participants into abstainers, who completed zero assessments, dedicated participants who completed a number of assessments one standard deviation or more above the average number of assessments completed by participants, and occasional participants who did not meet the criteria for the two previous groups.
-
-```{r, message = FALSE, warning=FALSE}
-data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>%
-  summarise(mean = mean(n),
-            stdev = sd(n),
-            median = median(n))
-```
-
-The average number of submission per user is \~7 (6.997224), the standard deviation of reports is \~31 (31.11953). This gives us:
-
-| Engagement | n    |
-|------------|------|
-| high       | 216  |
-| low        | 5187 |
-
-I made a quick bar chart of high vs low engagement users according to this approach (ignoring people with zero contributions who are not in the data).
-
-```{r, message = FALSE, warning=FALSE}
-data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_kron = if_else(n > 38, "high", "low"))%>%
-  ggplot(aes(x = engagement_kron))+
-  geom_bar()+
-  theme_minimal()
-```
-
-Out of curiosity, I tried using the median instead of the mean, which gives::
-
-| Engagement | n    |
-|------------|------|
-| high       | 248  |
-| low        | 5155 |
-
-```{r, message = FALSE, warning=FALSE}
-data %>%
-  group_by(user_id) %>%
-  count() %>%
-  ungroup() %>% 
-  mutate(engagement_kron = if_else(n > 32, "high", "low")) %>% 
-  ggplot(aes(x = engagement_kron))+
-  geom_bar()+
-  theme_minimal()
-```
-
-# Dependent mixture/hidden Markov models:
-
-## Functions:
-
-This function implements Markov mixture models via the expectation maximization algorithm:
 
 ```{r}
 MarkovMixture <- function(x, D, K,
@@ -321,12 +201,11 @@ output_clusters <- function(d, N = 50, plot = TRUE, hidden = FALSE, weight = NUL
 This creates a tibble with participant ID and then their sequence of contributions, 1 means they did not make a contribution on that day, 2 means they did (for some reason the algorithm doesn't like this being 0 and 1 ¯\\\_(ツ)\_/¯ ).
 
 ```{r}
- seq_data <- data %>% 
-   filter(version == "v2016") %>%
+ seq_data <- data %>%
    group_by(user_id) %>% 
    distinct(date)%>%
   do(sequence = as.numeric(seq.Date(min(.$date),
-                            as.Date('2016-11-03'),
+                            as.Date('2021-03-03'),
                             by = '1 day') %in% .$date) + 1)
  
 dataSequence_concat <- unlist(seq_data$sequence) - 1 # 0 = no data; 1 = data
@@ -343,9 +222,8 @@ Specifying the Hidden Markov Model using the depmixS4 package. The initial value
 hmm <- depmix(dataSequence_concat ~ 1,
               nstates = 3,
               ntimes = dataSequence_lengths,
-              #need to play aout with these values to make sure the model converges)
-              trstart = #c(1/2, 1/2, 0, 
-                        c(1/2, 3/8, 1/8,
+              trstart = #c(1/2, 1/2, 0, # can't go directly high -> disengaged
+                        c(1/2, 3/8, 1/8, # can do so
                         #  1/4, 1/2, 1/4, 
                         1/6, 2/3, 1/6,
                           0, 0, 1), # Disengaged is an absorbing state
@@ -378,7 +256,7 @@ Then fitting the markov mixture models on the output.
 #### k = 3
 
 ```{r, message=FALSE}
-w <- as.numeric(1:4748 %in% sample(1:4748, 50, FALSE))
+w <- as.numeric(1:5403 %in% sample(1:5403, 50, FALSE))
 
 EM_hid3 <- multiStartEM(20, hidden_seq_list, D = 3, K = 3)
 
@@ -389,25 +267,27 @@ hid_clusters3 <- output_clusters(EM_hid3, hidden = TRUE, weight = w)
 hid_clusters3 <- output_clusters(EM_hid3, hidden = FALSE, weight = w)
 ```
 
+
+
 #### k = 4
 
 
     ```{r, message=FALSE}
-    w <- as.numeric(1:4748 %in% sample(1:4748, 50, FALSE))
+    w <- as.numeric(1:5403 %in% sample(1:5403, 50, FALSE))
 
     EM_hid4 <- multiStartEM(20, hidden_seq_list, D = 3, K = 4)
 
     hid_clusters4 <- output_clusters(EM_hid4, hidden = TRUE, weight = w)
     ```
-
-
-
+    
+    
+    
 ```{r}
 hid_clusters4 <- output_clusters(EM_hid4, hidden = FALSE, weight = w)
 ```
-
-Using the elbow plot method to
-
+    
+    
+    
 ```{r, message = FALSE}
 
 EM_hid2 <- multiStartEM(20, hidden_seq_list, D = 3, K = 2)
@@ -425,25 +305,10 @@ ggplot(choose_k_hidden) + aes(K, LL) + geom_line() + geom_point() +
     xlab('Number of clusters') + ylab('Log-likelihood') +
     theme_bw()
 
-#ggsave("elbow7", plot = plot)
+ggsave("elbow7", plot = plot)
 ```
-
-It seems like the most appropriate number of clusters is 4.
-
-```{r}
-saveRDS(EM_hid4,
-     file = here::here("Clusterings", "yr1_k4" ))
-     
- saveRDS(hid_clusters4,
-     file =here::here("Clusterings", "yr1_k4_clusters" ))    
-```
-
-```{r}
-
-#df <- data.frame(user_id =  seq_data$user_id)
-#df %>%
-#  group_by(user_id) %>%
-#  inner_join(hidden_seq_df) %>%
-#  group_by(user_id) %>%
-#  mutate(dayOfStudy = 224 - n():1 + 1) %>% View()
-```
+    
+    
+    
+    
+    
