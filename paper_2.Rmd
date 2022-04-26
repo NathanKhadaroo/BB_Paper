@@ -1,38 +1,28 @@
 ---
-title             : "Paper 2"
-shorttitle        : "Title"
-
-author: 
-  - name          : "Nathan Khadaroo-McCheyne"
-    affiliation   : "1"
-    corresponding : yes    # Define only one corresponding author
-    address       : "Postal address"
-    email         : "nathan.khadaroo@postgrad.manchester.ac.uk"
-  
-
-affiliation:
-  - id            : "1"
-    institution   : " Institute for Data Science & Artificial Intelligence, University of Manchester"
-    
-abstract: |
-
+title: "Paper 2"
+author:
+- name: Nathan Khadaroo-McCheyne
+  affiliation: '1'
+  corresponding: yes
+    address: Postal address
+  email: nathan.khadaroo@postgrad.manchester.ac.uk
+shorttitle: Title
+output:
+  html_document:
+    df_print: paged
+abstract: |2
   Researchers in the social sciences are increasingly drawing upon citizen science approaches for the collection of data. These approaches seek to involve non-professional scientists in the research process.
   However, there are concerns surrounding the quality of data produced by citizen scientists, which hinder further adoption of citizen science approaches. Protocols have been developed to detect and remove low quality contributions and ensure that data produced by citizen scientists are of sufficient quality; however, these protocols are difficult to apply for approaches such as ecological momentary assessment, which focus on generating data on subjective phenomena. Researchers using these approaches have tended to use engagement, typically operationalised as the quantity of contributions made by a particpant, as a proxy measurement for the quality of contributions.
   However, it remains unknown the extent to which data quality is a good proxy for data quality. If it is not, this approach can potentially create issues for the reproducibility of results by undermining the statistical power of the studies, and by creating a large amount of arbitrary researcher degrees of freedom.
-  
-  
-  
   One sentence summarizing the main result (with the words "**here we show**" or their equivalent).
-  
   Using data from the Britain Breathing project, we show that ....
-  
   Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the  main result adds to previous knowledge.
-  
   One or two sentences to put the results into a more **general context**.
-  
   Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
-  
-output: pdf_document 
+affiliation:
+- id: '1'
+  institution: ' Institute for Data Science & Artificial Intelligence, University
+    of Manchester'
 ---
 
 ```{r setup, include=FALSE}
@@ -82,7 +72,7 @@ However failing to remove careless responses also presents downsides. Ternovski 
 
 # Methods:
 
-## Data
+## Case study
 
 This paper uses data from the Britain Breathing project and from OpenPrescribing.net .
 
@@ -96,7 +86,7 @@ Available further information includes the gender of participants, their date of
 
 The data has good geographical coverage, with reports submitted from 95% of all postcode areas in the UK, with the average number of reports per postcode being 167 (idem: 89).
 
-Three versions of the application were deployed, v2016, v1 and v2.
+Three versions of the application were deployed, v2016, v1 and v2, the use of which is shown in Figure x.
 
 ```{r, echo = FALSE}
 
@@ -107,7 +97,7 @@ df %>%
   scale_x_date(date_breaks = '6 months')+
   scale_y_continuous(breaks = seq(0, 1825, 250))+
   scale_fill_manual(values=c("orange", "yellow","green4" ))+
-  theme_bw()+
+  theme_minimal()+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+
   labs(fill = "Version:", x = "", y = "Number of reports")
 
@@ -131,8 +121,6 @@ df %>%
 
 
 ```
-
-**XXXX I've chosen to use a log log plot here, I think this is appropriate, and the graph is hard to read otherwise, but Covid hasn't filled me with confidence that academics are actually any good at reading logscales XXXX**
 
 *NHS England prescription data:*
 
@@ -304,9 +292,18 @@ Using the elbow heuristic for detecting the optimal number of clusters we find t
 | **3** | 3   | 3460 |
 | **4** | 4   | 287  |
 
-50 particiants were sampled from the study and plotted with their assigned states and cluster.
+50 participants were sampled from the study and plotted with their assigned states and cluster.
 
-![](images/kis4.png)
+![](images/00000b.jpg)
+
+![](images/000007%20(1).png)
+
+```{r}
+library(ricv)
+
+ricv(img1 = "images/000007 (1).jpg", img2 = "images/00000b.jpg")
+
+```
 
 Visually we can distinguish four reporting behaviors high (cluster 1, 526/4748), medium (cluster 2, 475/4784), low (cluster 4, 278/4784), and tourist (cluster 3, 3460/4748).
 
@@ -370,12 +367,6 @@ dfy1_all_clusters %>%
   group_by(ccg, lubridate::month(date)) %>%
   summarise(reports = n(),
             mean_wellbeing = mean(how_im_doing)) 
-
-
-presc %>%
-  filter(date())
-%>% 
-  right_join(presc, by = c("ccg" ="row_name" ))
 
 
 

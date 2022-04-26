@@ -391,7 +391,6 @@ hid_clusters3 <- output_clusters(EM_hid3, hidden = FALSE, weight = w)
 
 #### k = 4
 
-
     ```{r, message=FALSE}
     w <- as.numeric(1:4748 %in% sample(1:4748, 50, FALSE))
 
@@ -399,8 +398,6 @@ hid_clusters3 <- output_clusters(EM_hid3, hidden = FALSE, weight = w)
 
     hid_clusters4 <- output_clusters(EM_hid4, hidden = TRUE, weight = w)
     ```
-
-
 
 ```{r}
 hid_clusters4 <- output_clusters(EM_hid4, hidden = FALSE, weight = w)
