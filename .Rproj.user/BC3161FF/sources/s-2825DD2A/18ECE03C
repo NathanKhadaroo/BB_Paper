@@ -1,0 +1,31 @@
+{
+    "id": "18ECE03C",
+    "path": "~/Desktop/BB_Paper/Clusterings.Rmd",
+    "project_path": "Clusterings.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1651159775212.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "351,27",
+        "scrollLine": "338",
+        "rmdVisualMode": "false",
+        "rmdVisualWrapConfigured": "true",
+        "docOutlineVisible": "1",
+        "rmdVisualModeLocation": "2:25",
+        "rmdVisualCollapsedChunks": ""
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1649934935,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1651161713646,
+    "read_only": false,
+    "read_only_alternatives": []
+}
