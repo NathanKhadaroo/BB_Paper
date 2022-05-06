@@ -3,19 +3,17 @@ title: "Paper 2"
 author:
 - name: Nathan Khadaroo-McCheyne
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-abstract: |2
+abstract: |
   Researchers in the social sciences are increasingly drawing upon citizen science approaches for the collection of data. These approaches seek to involve non-professional scientists in the research process.
   However, there are concerns surrounding the quality of data produced by citizen scientists, which hinder further adoption of citizen science approaches. Protocols have been developed to detect and remove low quality contributions and ensure that data produced by citizen scientists are of sufficient quality; however, these protocols are difficult to apply for approaches such as ecological momentary assessment, which focus on generating data on subjective phenomena. Researchers using these approaches have tended to use engagement, typically operationalised as the quantity of contributions made by a particpant, as a proxy measurement for the quality of contributions.
   However, it remains unknown the extent to which data quality is a good proxy for data quality. If it is not, this approach can potentially create issues for the reproducibility of results by undermining the statistical power of the studies, and by creating a large amount of arbitrary researcher degrees of freedom.
-  
   Using data from the Britain Breathing project, we show that ....
-  
   Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the  main result adds to previous knowledge.
   One or two sentences to put the results into a more **general context**.
   Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
-  
 affiliation:
 - id: '1'
   institution: ' Institute for Data Science & Artificial Intelligence, University
@@ -29,9 +27,9 @@ library(tidyverse)
 library(lubridate)
 library(sf)
 library(ggspatial)
-library(gganimate)
 library(ggstatsplot)
 library(patchwork)
+library(gt)
 
 df <- read_csv(here::here("Data",
                           "base_file_all_final.csv"))
@@ -77,7 +75,7 @@ Furthermore, it remains to be established whether low engagement users do system
 
 This paper uses data from Britain Breathing, a smartphone application-based ESM study on the symptoms of allergic rhinitis, and anti-hystamine prescription data from OpenPrescribe to explore whether low engagement users do provide less reliable data. Furthermore, by exploring several ways of operationalising engagement identified in the litterature, this paper tests how sensitive the impact of removing low-engagement participants to the operationalisation of engagement.
 
-Finally this paper explores whether demographic differences between high and low engagement users, the key factor in determining how much rejecting low-engagement users will affect the sample's representativness, are sensitive to how engagement is operationalised.
+Finally this paper explores whether demographic differences between high and low engagement users, the key factor in determining how much rejecting low-engagement users will affect the sample's representativeness, are sensitive to how engagement is operationalised.
 
 # Methods:
 
@@ -114,7 +112,7 @@ df %>%
 
 ```
 
-A common feature of citizen science data is high levels of participation inequality (Hackley, 2016). This feature can be seen in the Britain Britain data. Fig X shows how many participants have reported on a given number of days. The log-log scale makes clear that the overwhelmingly most common behavior was for participants to make a single contribution. This is in line with findings from (XXXX add Short list of projects which show single contributions (Jaso and geerharts?XXXX).
+A common feature of citizen science data is high levels of participation inequality (Hackley, 2016). This feature can also be seen in the Britain Britain data. Fig X shows how many participants have reported on a given number of days. The log-log scale makes clear that the overwhelmingly most common behavior was for participants to make a single contribution. This is in line with findings from (XXXX add Short list of projects which show single contributions (Jaso and geerharts?, or maybe not just esm XXXX).
 
 ```{r, echo = FALSE, warning = FALSE}
 
@@ -135,7 +133,7 @@ df %>%
 
 *NHS England prescription data:*
 
-As a means of validating the data collected using the Britain Breathing application, Vigo, et al (2018) look at the correlation between the median lack of wellness reported on the Britain Breathing application and the number of antihistamines prescribed by general practitioners, finding that they are very strongly (r = 0.93) correlated. This data is openly available from OpenPrescribing.net. The smallest spatial unit at which this data is provided is the Clinical Commisioning group level.
+As a means of validating the data collected using the Britain Breathing application, Vigo, et al (2018) look at the correlation between the median lack of wellness reported on the Britain Breathing application and the number of antihistamines prescribed by general practitioners, finding that they are very strongly (r = 0.93) correlated. This data is openly available from OpenPrescribing.net. The smallest spatial unit at which this data is provided is the Clinical Commissioning group level.
 
 ## Procedure
 
@@ -143,11 +141,11 @@ As a means of validating the data collected using the Britain Breathing applicat
 
 ![Fig x](images/years.png)
 
-Data is available from April 2016 to April 2021. There were 200 982 contributions by 4 748 participants in 2016, 74 183 contributions by 335 participants in 2017, 65 534 contributions by 269 participants in 2018, 19 115 contributions by 78 participants in 2019, 16 446 contributions by 52 participants in 2020, and 182 contributions by 9 users in 2021.
+Britain Breathing data is available from April 2016 to April 2021. There were 200 982 contributions by 4 748 participants in 2016, 74 183 contributions by 335 participants in 2017, 65 534 contributions by 269 participants in 2018, 19 115 contributions by 78 participants in 2019, 16 446 contributions by 52 participants in 2020, and 182 contributions by 9 users in 2021.
 
 Data was submitted throughout the year, with the exception of 2017, where data collection began in May, and in 2021, where data is available from January until the beginning of March
 
-Data was analysed for each year, with the exception of 2021, due to the limited amount of data for that year (fig x).
+Data was analysed for each year, with the exception of 2021, due to the limited amount and temporal coverage of data for that year (fig x).
 
 ### *Clustering by level of engagement*
 
@@ -173,44 +171,36 @@ Data on antihistamine prescriptions is available from OpenPrescribing at the Cli
 
 Vigo, et al (2018)... **XXXX I started to write up what had been done in vigo et al here before outlining what i planned to do, but it's not actually clear what was done in the original paper XXXX**
 
-\<---- Note: Amount vs Quantity
+**\<---- Note: Amount vs Quantity**
 
-From the Open prescribe website:
+**From the Open prescribe website:**
 
-"*Items* counts the number of times a medicine has been prescribed. It says nothing about how much of it has been prescribed (for that see [quantity](https://openprescribing.net/faq/#prescquantity)) as some presciptions will be for many weeks' worth of treatment while others will be much smaller.
+**"*Items* counts the number of times a medicine has been prescribed. It says nothing about how much of it has been prescribed (for that see [quantity](https://openprescribing.net/faq/#prescquantity)) as some presciptions will be for many weeks' worth of treatment while others will be much smaller.**
 
-*Quantity* is the total amount of a medicine that has been prescribed, but the units used depend on the particular form the medicine is in"
+***Quantity*** **is the total amount of a medicine that has been prescribed, but the units used depend on the particular form the medicine is in"**
 
-I'm not sure exactly which variable to use here, items would seem to indicate how often people go to the doctor with Hayfever problems, quantity is the amount that has been prescribed, which I would assume is more to do with the gp's personal preferences than the patients? (my personal experience with hayfever has been to just buy over the counter loratadine, rather than go through the NHS, which can take weeks)
+**I'm not sure exactly which variable to use here, items would seem to indicate how often people go to the doctor with Hayfever problems, quantity is the amount that has been prescribed, which I would assume is more to do with the gp's personal preferences than the patients? (my personal experience with hayfever has been to just buy over the counter loratadine, rather than go through the NHS, which can take weeks)**
 
 \
 \<----
 
 ### Group differences
 
-To asses the impact of removing unengaged participants
+To asses the impact of removing unengaged participants, this paper compares the characteristics of res
 
 *Demographics*
 
 Previous studies have explored associations between engagement and demographic characteristics.
 
-Perski, et al (2017) report age, gender, education, employment and ethnicity as the most commonly found associations with engagement and attrition.
+Perski, et al (2017) report age, gender, education, employment and ethnicity as the most commonly found associations with engagement and attrition. Similarly, Druce, et al (2017) find that age differs notably between groups (with engaged participants being over 5 years older on average), and a substantially lower proportion of women were present in the "tourist" cluster. Kronkvist and Engstrom (2020) find that age and being female is associated with higher engagement in the study, as do Rintala, et al (2019). Turner, et al (2017) find that race/ethnicity, education, and age are are associated with higher levels of engagement.
 
-Similarly, Druce et al (2017) find that age differs notably between groups (with engaged participants being over 5 years older on average), and a substantially lower proportion of women were present in the "tourist" cluster.
-
-Kronkvist and Engstrom (2020) find that age and being female is associated with higher engagement in the study, as do Rintala, et al (2019).
-
-Turner, et al (2017) find that race/ethnicity, education, and age are are associated with higher levels of engagement.
-
-**(Should these 4 paragraphs be a table?)**
+**(Would this \^ be better presented as a table?)**
 
 Britain breathing asks participants for their age and gender which will allow these characteristics to be compared. Furthermore the geotagged nature of the reports allows us to determine whether the reports are made in an urban or rural setting.
 
 *Symptom intensity*
 
-One possible factor in whether or not a participant chooses to contribute to the application on a given day may be the severity of the symptoms they are experiencing.
-
-Fig x shows that reports peak every year around pollen season. A possible mechanism is that as symptoms subside, participants stop reporting.
+One possible factor in whether or not a participant chooses to contribute to the application on a given day may be the severity of the symptoms they are experiencing. Fig x shows that reports peak every year around pollen season. One possible mechanism is that as symptoms subside, participants stop reporting.
 
 ```{r, echo = F}
 
@@ -234,14 +224,25 @@ df %>%
 ### Clusterings
 
 ```{r, include=FALSE}
-dfy1 <- df %>%
-  dplyr::filter(version == "v2016")
+dfy1 <- df %>% 
+  filter(lubridate::year(date) == 2016)
 
+dfy2 <- df %>% 
+  filter(lubridate::year(date) == 2017)
+
+dfy3 <- df %>% 
+  filter(lubridate::year(date) == 2018)
+
+dfy4 <- df %>% 
+  filter(lubridate::year(date) == 2019)
+
+dfy5 <- df %>% 
+  filter(lubridate::year(date) == 2020)
 ```
 
 *Simple clusterings*
 
-The most common way of operationalising engagement is using contribution thresholds (Jaso, et al. 2021). In this approach a participant is considered to not have engaged with the study if they contribute less than a certain number of reports. Figure X shows how participants in the first year would be classified according to this approach using 4 thresholds: 1, 3, 5, and 10.
+The most common way of operationalising engagement is using contribution thresholds (Jaso, et al. 2021). According to this approach, a participant is considered to not have engaged with the study if they contribute less than a certain number of reports. Figure X shows how participants in the first year would be classified according to this approach using 4 thresholds: 1, 3, 5, and 10.
 
 ```{r, echo = FALSE}
 p1 <- dfy1 %>%
@@ -340,23 +341,40 @@ Finally participants were clustered according to the history of latent states in
 
 #Loading these manually as they take a long time to run
 
-yr1_k4 <- readRDS(file = here::here("Clusterings", "yr1_k4"))
+yr1_k4          <- readRDS(file = here::here("Clusterings", "yr1_k4"))
      
-yr1_k4_clusters <- readRDS(file = here::here("Clusterings", "yr1_k4_clusters" ))   
+yr1_k4_clusters <- readRDS(file = here::here("Clusterings", "yr1_k4_clusters" ))
+
+yr2_k4          <- readRDS(file = here::here("Clusterings", "yr2_k4"))
+     
+yr2_k4_clusters <- readRDS(file = here::here("Clusterings", "yr2_k4_clusters" )) 
+
+yr3_k4          <- readRDS(file = here::here("Clusterings", "yr3_k4"))
+     
+yr3_k4_clusters <- readRDS(file = here::here("Clusterings", "yr3_k4_clusters" )) 
+
+yr4_k4          <- readRDS(file = here::here("Clusterings", "yr4_k4"))
+     
+yr4_k4_clusters <- readRDS(file = here::here("Clusterings", "yr4_k4_clusters" )) 
+
+yr5_k4          <- readRDS(file = here::here("Clusterings", "yr5_k4"))
+     
+yr5_k4_clusters <- readRDS(file = here::here("Clusterings", "yr5_k4_clusters" )) 
 ```
 
 Using the elbow heuristic for detecting the optimal number of clusters we find that 4 clusters is optimal.
 
-**XXXX We don't actually find this at all this time, this is just the most common result (there are also other reasons, mostly ease of interpretations, and consistency with the cloudy paper, why this is preferable). Also things are much more consistant after teh second year, likely a reflection of a smaller about of latent behaviours groupings XXXX**
+**XXXX We don't actually find this at all this time, I found this the forst time I ran this and it is the most common result (there are also other reasons, mostly ease of interpretations, and consistency with the cloudy paper, why this is preferable). Also, things are much more consistant after the second year, likely a reflection of a smaller about of latent behaviours groupings given less participants XXXX**
 
 ![](images/elbow8.png)
 
-|       |     |      |
-|:------|:----|:-----|
-| **1** | 1   | 526  |
-| **2** | 2   | 475  |
-| **3** | 3   | 3460 |
-| **4** | 4   | 287  |
+|             |                            |
+|-------------|----------------------------|
+| **Cluster** | **Number of participants** |
+| **1**       | 526                        |
+| **2**       | 475                        |
+| **3**       | 3460                       |
+| **4**       | 287                        |
 
 50 participants were randomly sampled from the study and visualized in figures x and x. Figure x shows the daily latent state assigned to the participants by the hidden Markov model, and the cluster assigned to the participant by the Markov mixture model. Figure x shows days on which the participant make a contribution, and the final cluster assigned to the participant by the Markov mixture model. **(I need to fix the x axis labels on these)**
 
@@ -364,9 +382,9 @@ Using the elbow heuristic for detecting the optimal number of clusters we find t
 
 ![](images/y5b.png)
 
-Visually we can distinguish four reporting behaviors high (cluster 1, 526/4748), medium (cluster 2, 475/4784), low (cluster 4, 278/4784), and tourist (cluster 3, 3460/4748).
+Visually we can distinguish four reporting behaviors high (cluster 4, 526/4748), medium (cluster 2, 475/4784), low (cluster 4, 278/4784), and tourist (cluster 1, 3460/4748).
 
-```{r}
+```{r, echo = F}
 
 counts_by_cluster <- dfy1 %>%
   group_by(user_id) %>%
@@ -392,6 +410,8 @@ counts_by_cluster %>%
 ### Correlation analysis
 
 NHS prescription data is available from OpenPrescribing.net. However this data is only available for prescriptions made in England. Reports made outside of England (1697, or \~8.4% of reports) were therefore removed from the data, as they could not be linked to prescription data.
+
+*Year 1*
 
 ```{r}
 
@@ -421,17 +441,193 @@ dfy1_all_clusters <- dfy1 %>%
   st_join(ccgs, left = FALSE) %>% 
   mutate(ccg = CCG21NM.y)
 
-dfy1_all_clusters %>%
+test <-  dfy1_all_clusters %>%
   filter(ccg != "NHS VALE ROYAL CCG") %>% 
   group_by(ccg, lubridate::month(date)) %>%
   summarise(reports = n(),
-            mean_wellbeing = mean(how_im_doing)) 
+            mean_wellbeing = mean(how_im_doing),
+            median_wellbeing = median(how_im_doing)) 
 
 
-
+presc_y1 <- presc %>% 
+  filter(lubridate::year(date) == 2016) %>%
+  mutate(month = lubridate::month(date))
 
 
 ```
+
+*Year 2*
+
+
+```{r}
+
+#Joining the cluster data with the prescription data
+
+dfy2_all_clusters <- dfy2 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr2_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy2,by = "user_id")%>%
+  st_as_sf(coords = c("longitude", "latitude"),
+           agr = "constant",
+           crs = "WGS84") %>%
+  st_transform(crs = 27700)%>%
+  st_intersection(ccgs) %>% 
+  st_join(ccgs, left = FALSE) %>% 
+  mutate(ccg = CCG21NM.y)
+
+test <-  dfy2_all_clusters %>%
+  filter(ccg != "NHS VALE ROYAL CCG") %>% 
+  group_by(ccg, lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) 
+
+
+presc_y2 <- presc %>% 
+  filter(lubridate::year(date) == 2017) %>%
+  mutate(month = lubridate::month(date))
+
+
+letest <- presc_y2 %>%
+  left_join(test, by = c("row_name" = "ccg",
+                          "month" = "lubridate::month(date)")) %>% 
+  drop_na(median_nose)
+
+p1 <- letest %>%
+  ggscatterstats(quantity, mean_nose)
+
+p2 <- letest %>%
+  ggscatterstats(quantity, median_nose)
+
+p1|p2
+```
+
+*Year 3*
+
+*Year 4*
+
+*Year 5*
+
+```{r}
+
+#Joining the cluster data with the prescription data
+
+dfy5_all_clusters <- dfy5 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr2_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy5,by = "user_id")%>%
+  st_as_sf(coords = c("longitude", "latitude"),
+           agr = "constant",
+           crs = "WGS84") %>%
+  st_transform(crs = 27700)%>%
+  st_intersection(ccgs) %>% 
+  st_join(ccgs, left = FALSE) %>% 
+  mutate(ccg = CCG21NM.y)
+
+test <-  dfy5_all_clusters %>%
+  filter(ccg != "NHS VALE ROYAL CCG") %>% 
+  group_by(ccg, lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_how = mean(how_im_doing),
+            median_how = median(how_im_doing)) 
+
+
+presc_y5 <- presc %>% 
+  filter(lubridate::year(date) == 2020) %>%
+  mutate(month = lubridate::month(date))
+
+
+letest <- presc_y5 %>%
+  left_join(test, by = c("row_name" = "ccg",
+                          "month" = "lubridate::month(date)")) %>% 
+  drop_na(mean_how)
+
+p1 <- letest %>%
+  ggscatterstats(quantity, mean_how)
+
+p2 <- letest %>%
+  ggscatterstats(quantity, median_how)
+
+p1|p2
+```
+
+
+### Group differences
+
+*Year 1*
+
+```{r}
+y1clust <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low"))%>% 
+  left_join(yr1_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy1,by = "user_id") %>% 
+  mutate(age = 2016- as.numeric(year_of_birth))
+
+y1clust %>%
+  group_by(cluster) %>%
+  summarise(mean_age = mean(age))
+
+beh <- y1clust %>%
+  group_by(cluster) %>%
+  count(gender)
+
+beh <- y1clust %>%
+  group_by(cluster) %>%
+  count()
+
+
+
+tribble(
+  ~Cluster, ~"High engagement", ~"Medium engagement",~"Low engagement",~"Tourists",
+  "Female (%)",   1,
+  "b",   2,
+  "c",   3
+)
+```
+
+*Year 2*
+
+*Year 3*
+
+*Year 4*
+
+*Year 5*
 
 # Results
 
@@ -485,9 +681,7 @@ Ternovski, J., & Orr, L. (2022). A Note on Increases in Inattentive Online Surve
 
 Vigo, M., Hassan, L., Vance, W., Jay, C., Brass, A., & Cruickshank, S. (2018). Britain Breathing: using the experience sampling method to collect the seasonal allergy symptoms of a country. *Journal of the American Medical Informatics Association*, *25*(1), 88-92.
 
-Visser,I & Maarten Speekenbrink (2010). depmixS4: An R Package for Hidden Markov Models.
- *Journal of Statistical Software*, 36(7), 1-21. URL
- <https://www.jstatsoft.org/v36/i07/.>
+Visser,I & Maarten Speekenbrink (2010). depmixS4: An R Package for Hidden Markov Models. *Journal of Statistical Software*, 36(7), 1-21. URL <https://www.jstatsoft.org/v36/i07/.>
 
 Yardley, L., Spring, B. J., Riper, H., Morrison, L. G., Crane, D. H., Curtis, K., ... & Blandford, A. (2016). Understanding and promoting effective engagement with digital behaviour change interventions. *American journal of preventive medicine*, *51*(5), 833-842.
 

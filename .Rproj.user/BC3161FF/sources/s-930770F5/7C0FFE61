@@ -1,0 +1,32 @@
+{
+    "id": "7C0FFE61",
+    "path": "~/Desktop/BB_Paper/paper_2.Rmd",
+    "project_path": "paper_2.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1651153675158.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "533,0",
+        "scrollLine": "517",
+        "last_setup_crc32": "930770F52eed1e1b",
+        "rmdVisualMode": "false",
+        "rmdVisualWrapConfigured": "true",
+        "docOutlineVisible": "1",
+        "rmdVisualModeLocation": "24905:13996.36328125",
+        "rmdVisualCollapsedChunks": ""
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1651771667,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1651847509340,
+    "read_only": false,
+    "read_only_alternatives": []
+}
