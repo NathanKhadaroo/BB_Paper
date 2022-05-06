@@ -458,7 +458,6 @@ presc_y1 <- presc %>%
 
 *Year 2*
 
-
 ```{r}
 
 #Joining the cluster data with the prescription data
@@ -502,11 +501,6 @@ presc_y2 <- presc %>%
   summarise(sum = sum(items))
 
 
-letest <- presc_y2 %>%
-  left_join(test, by = c("row_name" = "ccg",
-                          "month" = "lubridate::month(date)")) %>% 
-  drop_na(median_nose)
-
 
 letest <-  dfy2 %>%
   group_by(user_id) %>%
@@ -542,15 +536,18 @@ p1|p2
 
 *Year 3*
 
-*Year 4*
+*All participants*
 
-*Year 5*
+```{r, echo = F}
+presc_y3 <- presc %>% 
+  filter(lubridate::year(date) == 2018) %>%
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(sum = sum(items))
 
-```{r}
 
-#Joining the cluster data with the prescription data
 
-dfy5_all_clusters <- dfy5 %>%
+letest <-  dfy3 %>%
   group_by(user_id) %>%
   count() %>%
   ungroup() %>% 
@@ -559,50 +556,487 @@ dfy5_all_clusters <- dfy5 %>%
          engagement_threshold_5 = if_else(n > 5, "high", "low"),
          engagement_threshold_10 = if_else(n > 10, "high", "low"),
          engagement_kron = if_else(n > 17, "high", "low")) %>% 
-  left_join(yr2_k4_clusters,by = "user_id") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
   dplyr::select(-prob.1,
           -prob.2,
           -prob.3,
           -prob.4,
           -n) %>% 
-  left_join(dfy5,by = "user_id")%>%
-  st_as_sf(coords = c("longitude", "latitude"),
-           agr = "constant",
-           crs = "WGS84") %>%
-  st_transform(crs = 27700)%>%
-  st_intersection(ccgs) %>% 
-  st_join(ccgs, left = FALSE) %>% 
-  mutate(ccg = CCG21NM.y)
-
-test <-  dfy5_all_clusters %>%
-  filter(ccg != "NHS VALE ROYAL CCG") %>% 
-  group_by(ccg, lubridate::month(date)) %>%
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
   summarise(reports = n(),
-            mean_how = mean(how_im_doing),
-            median_how = median(how_im_doing)) 
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
 
-
-presc_y5 <- presc %>% 
-  filter(lubridate::year(date) == 2020) %>%
-  mutate(month = lubridate::month(date))
-
-
-letest <- presc_y5 %>%
-  left_join(test, by = c("row_name" = "ccg",
-                          "month" = "lubridate::month(date)")) %>% 
-  drop_na(mean_how)
-
-
-  
 p1 <- letest %>%
-  ggscatterstats(quantity, mean_how)
+  ggscatterstats(sum, mean_nose)
 
 p2 <- letest %>%
-  ggscatterstats(quantity, median_how)
+  ggscatterstats(sum, median_nose)
+
+p1
+```
+
+*Threshold approaches*
+
+Threshold of 1.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
 
 p1|p2
 ```
 
+Threshold of 3.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 5.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 10.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+HMM thresholds
+
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%   
+  filter(cluster == 1) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 2) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+letest3 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 3) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose)
+
+letest4 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>%
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 4) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose)
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p3 <- letest3 %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p4 <- letest4 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+(p1|p2)/(p3|p4)
+```
+
+
+*Year 4*
+
+```{r}
+presc_y4 <- presc %>% 
+  filter(lubridate::year(date) == 2019) %>%
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(sum = sum(items))
+
+
+
+letest <-  dfy4 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr4_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy4,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y4, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose)
+
+p2 <- letest %>%
+  ggscatterstats(sum, median_nose)
+
+p1|p2
+```
+
+*Year 5*
+
+```{r}
+
+presc_y5 <- presc %>% 
+  filter(lubridate::year(date) == 2020) %>%
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(sum = sum(items))
+
+letest <-  dfy5 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr5_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy5,by = "user_id") %>%  
+  drop_na(how_im_doing) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y2, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose)
+
+p2 <- letest %>%
+  ggscatterstats(sum, median_nose)
+
+p1|p2
+
+```
 
 ### Group differences
 
@@ -658,7 +1092,6 @@ tribble(
 *Year 5*
 
 ### Antonym analysis
-
 
 # Results
 

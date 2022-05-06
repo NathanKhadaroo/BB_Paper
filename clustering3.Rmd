@@ -284,6 +284,10 @@ saveRDS(EM_hid4,
      
  saveRDS(hid_clusters4,
      file =here::here("Clusterings", "yr3_k4_clusters" ))    
+ 
+EM_hid4         <- readRDS(file = here::here("Clusterings", "yr3_k4"))
+     
+hid_clusters4 <- readRDS(file = here::here("Clusterings", "yr3_k4_clusters" )) 
 ```
 
 

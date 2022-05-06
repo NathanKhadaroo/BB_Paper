@@ -3,7 +3,7 @@
     "path": "~/Desktop/BB_Paper/clustering3.Rmd",
     "project_path": "clustering3.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "635617039",
     "contents": "",
     "dirty": false,
     "created": 1651600396098.0,
@@ -13,15 +13,15 @@
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "0,0",
-        "scrollLine": "0"
+        "cursorPosition": "206,0",
+        "scrollLine": "172"
     },
     "folds": "",
-    "lastKnownWriteTime": 1651247089,
+    "lastKnownWriteTime": 1651857193,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1651247089,
+    "last_content_update": 1651857193604,
     "read_only": false,
     "read_only_alternatives": []
 }
