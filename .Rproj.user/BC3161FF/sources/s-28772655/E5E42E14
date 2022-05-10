@@ -1,14 +1,14 @@
 {
-    "id": "C6CE5449",
-    "path": "~/Desktop/BB_Paper/clustering5.Rmd",
-    "project_path": "clustering5.Rmd",
-    "type": "r_markdown",
-    "hash": "0",
+    "id": "E5E42E14",
+    "path": "~/Desktop/BB_Paper/rando.R",
+    "project_path": "rando.R",
+    "type": "r_source",
+    "hash": "134834411",
     "contents": "",
     "dirty": false,
-    "created": 1651242207150.0,
+    "created": 1651243363222.0,
     "source_on_save": false,
-    "relative_order": 6,
+    "relative_order": 5,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
@@ -17,11 +17,11 @@
         "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1651242762,
+    "lastKnownWriteTime": 1651845412,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1651242762306,
+    "last_content_update": 1651845412227,
     "read_only": false,
     "read_only_alternatives": []
 }
