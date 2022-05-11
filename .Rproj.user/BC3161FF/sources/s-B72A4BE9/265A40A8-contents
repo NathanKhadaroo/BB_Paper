@@ -1,0 +1,44 @@
+# Load library: -----------------------------------------------------------
+
+library(tidymodels)
+
+# Load data: --------------------------------------------------------------
+
+df <- palmerpenguins::penguins %>%
+  drop_na()
+
+# Normal Pearson's r: -----------------------------------------------------
+
+cor.test(df$bill_length_mm,
+         df$bill_depth_mm,
+         method = c("pearson"))
+
+# Bootstrapped version: ---------------------------------------------------
+# Creating 10000 bootstraped data sets:
+
+bootstrap <- bootstraps(df, times = 1000)
+
+fit <- function(split) {
+  cor.test(analysis(split)$bill_length_mm,
+           analysis(split)$bill_depth_mm,
+           method = c("pearson"))
+  }
+  
+# Caculating Pearson's r for each sample:
+
+boot_models <-
+  bootstrap %>% 
+  mutate(model = map(splits, fit),
+         coef_info = map(model, tidy)) %>%
+  unnest(coef_info)
+
+# Mean Pearson's r across all data:
+boot_models %>% 
+  summarise(mean = mean(estimate))
+
+# 
+boot_models %>% 
+  ggplot(aes(x = estimate)) + 
+  geom_histogram(bins = 20, col = "white")+
+  theme_minimal()
+
