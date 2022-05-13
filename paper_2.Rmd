@@ -102,7 +102,7 @@ This paper uses data from the Britain Breathing project and from OpenPrescribing
 
 The Britain Breathing project is a citizen science study which used an smartphone-based experience sampling approach to collecting geolocated time series data on seasonal pollen allergy symptoms, also referred to as allergic rhinitis or hay-fever (Vigo, et al. 2018).
 
-Participants are invited to download a mobile phone application and provide some basic information such as their gender, age, and allergy history. Users of the application can report symptoms at any time, and also at daily scheduled intervals. When they make a report, they are first asked how they are feeling. If they respond that they are feeling well, no further questions are asked, if they respond otherwise, they are asked further questions about the severity of various symptoms ("nose", "eyes, and "breathing"), which they report on a four point scale ranging from 0, which signifies an absence of symptoms, to 3, which indicates severe symptoms.
+Participants are invited to download a mobile phone application and provide some basic information such as their gender, age, and allergy history. Users of the application can report symptoms at any time, and also at daily scheduled intervals. When they make a report, they are first asked how they are feeling. If they respond that they are feeling well, no further questions are asked, if they respond otherwise, they are asked further questions about the severity of various symptoms ("nose", "eyes, and "breathing"), which they report on a four point scale ranging from 0, which signifies an absence of symptoms, to 3, which indicates severe symptoms. However, a bug in the application meant that **some users** (XXXXgive numberXXXX)
 
 Available further information includes the gender of participants, their date of birth, known allergies, whether or not they are taking antihistamine medication, and the date, time, and location of each report submitted.
 
@@ -533,18 +533,17 @@ With all data included, the Pearson coefficient for the correlation between symp
 
 ```
 
-
 *Threshold approaches*
 
 *Year 1*
 
-For a threshold of 1, the correlation with high-engagement reports was ~0.51, the correlation with low-engagement reports was ~0.71. The difference is not statistically significant with a p-value of ~0.43.
+For a threshold of 1, the correlation with high-engagement reports was \~0.51, the correlation with low-engagement reports was \~0.71. The difference is not statistically significant with a p-value of \~0.43.
 
-For a threshold of 3, the correlation with high-engagement reports was ~0.55, the correlation with low-engagement reports was ~0.76. The difference is not statistically significant with a p-value of ~0.36.
+For a threshold of 3, the correlation with high-engagement reports was \~0.55, the correlation with low-engagement reports was \~0.76. The difference is not statistically significant with a p-value of \~0.36.
 
-For a threshold of 5, the correlation with high-engagement reports was ~0.53, the correlation with low-engagement reports was ~0.76. The difference is not statistically significant with a p-value of ~0.32.
+For a threshold of 5, the correlation with high-engagement reports was \~0.53, the correlation with low-engagement reports was \~0.76. The difference is not statistically significant with a p-value of \~0.32.
 
-For a threshold of 10, the correlation with high-engagement reports was ~0.56, the correlation with low-engagement reports was ~0.81. The difference is not statistically significant with a p-value of ~0.22.
+For a threshold of 10, the correlation with high-engagement reports was \~0.56, the correlation with low-engagement reports was \~0.81. The difference is not statistically significant with a p-value of \~0.22.
 
 ```{r, eval=FALSE}
  letest <-  dfy1 %>%
@@ -613,13 +612,13 @@ cor_significance_test(combined$items, combined$mean_how, combined$mean_how2, met
 
 *Year 2*
 
-For a threshold of 1, the correlation with high-engagement reports was ~0.92, the correlation with high-engagement reports was ~0.85. The difference is not statistically significant with a p-value of ~0.47.
+For a threshold of 1, the correlation with high-engagement reports was \~0.92, the correlation with high-engagement reports was \~0.85. The difference is not statistically significant with a p-value of \~0.47.
 
-For a threshold of 3, the correlation with high-engagement reports was ~0.92, the correlation with high-engagement reports was ~0.75. The difference is not statistically significant with a p-value of ~0.16.
+For a threshold of 3, the correlation with high-engagement reports was \~0.92, the correlation with high-engagement reports was \~0.75. The difference is not statistically significant with a p-value of \~0.16.
 
-For a threshold of 5, the correlation with high-engagement reports was ~0.92, the correlation with high-engagement reports was ~0.74. The difference is not statistically significant with a p-value of ~0.16.
+For a threshold of 5, the correlation with high-engagement reports was \~0.92, the correlation with high-engagement reports was \~0.74. The difference is not statistically significant with a p-value of \~0.16.
 
-For a threshold of 10, the correlation with high-engagement reports was ~0.91, the correlation with high-engagement reports was ~0.84. The difference is not statistically significant with a p-value of ~0.49.
+For a threshold of 10, the correlation with high-engagement reports was \~0.91, the correlation with high-engagement reports was \~0.84. The difference is not statistically significant with a p-value of \~0.49.
 
 ```{r, eval=FALSE}
  presc_y2 <- presc %>% 
@@ -696,13 +695,13 @@ cor_significance_test(combined$sum, combined$mean_how, combined$mean_how2, metho
 
 *Year 3*
 
-For a threshold of 1, the correlation with high-engagement reports was ~0.92, the correlation with low-engagement reports was ~0.52. The difference is statistically significant with a p-value of ~0.003.
+For a threshold of 1, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.52. The difference is statistically significant with a p-value of \~0.003.
 
-For a threshold of 3, the correlation with high-engagement reports was ~0.93, the correlation with low-engagement reports was ~0.68. The difference is statistically significant with a p-value of ~0.018.
+For a threshold of 3, the correlation with high-engagement reports was \~0.93, the correlation with low-engagement reports was \~0.68. The difference is statistically significant with a p-value of \~0.018.
 
-For a threshold of 5, the correlation with high-engagement reports was ~0.93, the correlation with low-engagement reports was ~0.69. The difference is statistically significant with a p-value of ~0.016.
+For a threshold of 5, the correlation with high-engagement reports was \~0.93, the correlation with low-engagement reports was \~0.69. The difference is statistically significant with a p-value of \~0.016.
 
-For a threshold of 10, the correlation with high-engagement reports was ~0.92, the correlation with low-engagement reports was ~0.73. The difference is statistically significant with a p-value of ~0.042.
+For a threshold of 10, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.73. The difference is statistically significant with a p-value of \~0.042.
 
 ```{r, eval = F}
 
@@ -777,16 +776,16 @@ cor(test2$sum, test2$mean_nose2, method= "pearson")
 cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
  
 ```
- 
+
 *Year 4*
 
-For a threshold of 1, the correlation with high-engagement reports was ~0.70, the correlation with high-engagement reports was ~0.18. The difference is not statistically significant with a p-value of ~0.09.
+For a threshold of 1, the correlation with high-engagement reports was \~0.70, the correlation with high-engagement reports was \~0.18. The difference is not statistically significant with a p-value of \~0.09.
 
-For a threshold of 3, the correlation with high-engagement reports was ~0.45, the correlation with high-engagement reports was ~0.32. The difference is not statistically significant with a p-value of ~0.70.
+For a threshold of 3, the correlation with high-engagement reports was \~0.45, the correlation with high-engagement reports was \~0.32. The difference is not statistically significant with a p-value of \~0.70.
 
-For a threshold of 5, the correlation with high-engagement reports was ~0.44, the correlation with high-engagement reports was ~0.38. The difference is not statistically significant with a p-value of ~0.85.
+For a threshold of 5, the correlation with high-engagement reports was \~0.44, the correlation with high-engagement reports was \~0.38. The difference is not statistically significant with a p-value of \~0.85.
 
-For a threshold of 10, the correlation with high-engagement reports was ~0.44, the correlation with high-engagement reports was ~0.49. The difference is not statistically significant with a p-value of ~0.84.
+For a threshold of 10, the correlation with high-engagement reports was \~0.44, the correlation with high-engagement reports was \~0.49. The difference is not statistically significant with a p-value of \~0.84.
 
 ```{r, eval = F}
 
@@ -861,16 +860,16 @@ cor(test2$sum, test2$mean_nose2, method= "pearson")
 cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
  
 ```
- 
+
 *Year 5*
 
-For a threshold of 1, the correlation with high-engagement reports was ~0.17, the correlation with high-engagement reports was ~0.36. The difference is not statistically significant with a p-value of ~0.72.
+For a threshold of 1, the correlation with high-engagement reports was \~0.17, the correlation with high-engagement reports was \~0.36. The difference is not statistically significant with a p-value of \~0.72.
 
-For a threshold of 3, the correlation with high-engagement reports was ~0.23, the correlation with high-engagement reports was ~0.42. The difference is not statistically significant with a p-value of ~0.57.
+For a threshold of 3, the correlation with high-engagement reports was \~0.23, the correlation with high-engagement reports was \~0.42. The difference is not statistically significant with a p-value of \~0.57.
 
-For a threshold of 5, the correlation with high-engagement reports was ~0.19, the correlation with high-engagement reports was ~0.48. The difference is not statistically significant with a p-value of ~0.48.
+For a threshold of 5, the correlation with high-engagement reports was \~0.19, the correlation with high-engagement reports was \~0.48. The difference is not statistically significant with a p-value of \~0.48.
 
-For a threshold of 10, the correlation with high-engagement reports was ~0.22, the correlation with high-engagement reports was ~0.39. The difference is not statistically significant with a p-value of ~0.63.
+For a threshold of 10, the correlation with high-engagement reports was \~0.22, the correlation with high-engagement reports was \~0.39. The difference is not statistically significant with a p-value of \~0.63.
 
 ```{r, eval = F}
 
@@ -945,13 +944,6 @@ cor(test2$sum, test2$mean_nose2, method= "pearson")
 cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
  
 ```
- 
-
-
-
-
-
-
 
 Threshold of 1.
 
@@ -1477,6 +1469,121 @@ p1|p2
 ```
 
 ### Antonym analysis
+
+Users are asked "How are you feeling today?" with the possible answers being "Great" (0) , "So-so" (1), and "Bad" (2).
+
+*Year one*
+
+```{r}
+p1 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = nose))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+  
+p2 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = eyes))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw() 
+  
+p3 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = breathing))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+
+p1|p2|p3
+
+  
+```
+
+**This seems too perfect! I don't find it plausible that *not a single person (out of* \~9 000) who said they were feeling great reported no symptoms, even mild. Is this a coding artifact? If nothing else, you'd think someone's finger would slip eventually**
+
+Year 2
+
+```{r}
+p1 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020)) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = nose))+
+  geom_jitter(alpha = 0.2, )+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+  
+p2 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020)) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = eyes))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw() 
+  
+p3 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020)) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = breathing))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+
+p1|p2|p3
+```
+
+**Similar here, not a single person who said they were feeling bad reported any symptoms**
+
+```{r}
+p1 <- df %>% 
+  drop_na(how_im_doing,
+          nose) %>%
+  ggscatterstats(how_im_doing, nose)
+
+p2 <- df %>% 
+  drop_na(how_im_doing,
+          eyes) %>%
+  ggscatterstats(how_im_doing, eyes)
+
+p3 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(how_im_doing, breathing)
+
+
+p4 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(how_im_doing, breathing, type = "non-parametric")
+
+
+p5 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(nose, breathing, type = "non-parametric")
+
+
+p3|p4|p5
+
+p1|p2|p3
+  
+```
 
 # Results
 
