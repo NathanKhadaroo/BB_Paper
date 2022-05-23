@@ -1,0 +1,2365 @@
+---
+title: "Comparing the relationship between data quality and engagement using threshold approaches vs hidden Markov models in an app-based experience sampling study"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+abstract: |
+  Researchers in the social sciences are increasingly drawing upon citizen science approaches for the collection of data. These approaches seek to involve non-professional scientists in the research process.
+  
+  However, there are concerns surrounding the quality of data produced by citizen scientists, which hinder further adoption of citizen science approaches. Protocols have been developed to detect and remove low quality contributions and ensure that data produced by citizen scientists are of sufficient quality; however, these protocols are difficult to apply for approaches such as ecological momentary assessment, which focus on generating data on subjective phenomena. Researchers using these approaches have tended to use engagement, typically operationalised as the quantity of contributions made by a particpant, as a proxy measurement for the quality of contributions.
+  
+  However, it remains unknown the extent to which engagament is a good proxy for data quality. If it is not, this approach can potentially create issues for the reproducibility of results by undermining the statistical power of the studies, and by creating a large amount of arbitrary researcher degrees of freedom.
+  
+  Using data from the Britain Breathing project, we show that ....
+  
+  Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the  main result adds to previous knowledge.
+  One or two sentences to put the results into a more **general context**.
+  Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+
+library(tidyverse)   # CRAN v1.3.1
+library(lubridate)   # CRAN v1.8.0
+library(sf)          # CRAN v1.0-7
+library(ggspatial)   # CRAN v1.1.5
+library(ggstatsplot) # CRAN v0.9.1
+library(patchwork)   # CRAN v1.1.1
+library(gt)          # CRAN v0.5.0
+library(coin)
+
+df <- read_csv(here::here("Data",
+                          "base_file_all_final.csv"))
+
+# Prescription data from https://openprescribing.net/bnf/030401/
+
+presc <- read_csv(here::here("Data",
+                             "spending-by-ccg-030401.csv"))
+
+# CCG boundary data from https://geoportal.statistics.gov.uk/datasets/d6acd30ad71f4e14b4de808e58d9bc4c/explore
+
+presc_vigo <- read.csv(here::here("Data",
+                                  "histamines-prescription.csv")) %>% 
+  filter(lubridate::year(date) == 2016) %>%
+  mutate(month = lubridate::month(date))
+
+  
+
+ccgs  <- st_read(here::here("Data",
+                           "Clinical_Commissioning_Groups_(April_2021)_EN_BUC",
+                           "Clinical_Commissioning_Groups_(April_2021)_EN_BUC.shp")) %>%
+  mutate(CCG21NM = toupper(CCG21NM))
+
+```
+
+# Introduction:
+
+Citizen science is an increasingly popular approach to research across disciplines, with scholars noting that citizen science whilst citizen science is best developed and most popular in ecology and astronomy, there is a rise in uses in geography, health, and biomedical research (Trojan, et al. 2019; Wiggins & Wilbanks, 2019).
+
+However, concerns surrounding the quality of data produced by citizen scientists have hindered further adoption of citizen science approaches (Aceves-Bueno, et al. 2017; Basiri, et al. 2019; Elliott & Rosenberg, 2019; Lukyanenko, et al. 2016; Riesch & Potter, 2014).
+
+Whilst it has been shown that in some cases the quality of data provided by citizen scientists can rival that of professional scientists, there is more heterogeneity in the quality of data (Aceves Bueno, et al. 2017).
+
+An enduring concern is that the quality of data produced by citizen scientists
+
+Identifying and removing low quality and careless responses remains essential for the both the credibility of the data, and for valid inferences to be made (Huang, 2018; Johnson & Sieber, 2013; Ternovski, 2022; McGonagle, et al. 2016). Huang (2018) demonstrates that insufficient effort responses can have a confounding effect on variables of interest, and can inflate observed correlations.
+
+Ternovski argues that inattentive respondents can introduce "substantial measurement error and attenuation bias" (2022: 1). In a power analysis they found that almost four times more participants were needed to achieve 80% power for their statistical tests, than when no screening for attention was implemented.
+
+In response to these concerns, approaches have been developed to mitigate concerns around data quality in citizen science studies, such as the implementation of quality assurance standards and protocols (Minghini, et al. 2017; Fonte, et al. 2017; Samulowska, et al, 2021).
+
+This includes approaches that leverage large amounts of redundancy in the data collection or classification approach (Balázs, et al. 2021; Lintott et al. 2008), or approaches where strong priors about the distribution of likely observations enable the flagging of unlikely reports for further investigation (Salganik, 2019; Kelling et al. 2012).
+
+------------------------------------------------------------------------
+
+One approach is to leverage redundancy in the data collection or classification approach (Salganik, 2019). This approach is taken in projects where an object may be mapped out and revised by many different users such as Open Street Map (Balázs, et al. 2021), or projects such as Galaxy Zoo where a same image can be shown to many participants (Lintott et al. 2008), and the high number of concurrent interpretations of the image/object can be used as a indicator of quality of the classification.
+
+Another approach is to use prior knowledge about the phenomenon in question to flag unlikely reports, either for re-evaluation by an expert or a user, or for more information such as a picture. For example, in the eBird project reports of "very rare species, very high counts, or out-of-season reports" are automatically flagged and a request for additional information, including a photograph, is sent to the participant (Salganik, 2019). This information is then sent to a regional expert for validation who then decides whether the report is legitimate (Kelling et al. 2012).
+
+However, these approaches are not universally applicable and are often developed in contexts where there is a relatively large amount of information about both participants, their contribution history, and the object or phenomena about which they are collecting data.
+
+For some approaches, such as studies using experience sampling methodology (ESM) which typically focus on generating data about the subjective experiences of participants, these approaches are difficultly applicable, in particular when these studies are opt-in, and joining the study is as simple as downloading a smartphone application.
+
+Given the difficulties in applying standard data quality protocols to ESM data, the most common approach used in these situations has been to use engagement, typically operationalised as the quantity of contributions submitted by a participant, as a proxy for the quality of the data, on the assumption that quality and quantity are associated, since both the attentiveness with which reports were completed and the number of reports completed are assumed to be at least partially determined by a participant's underlying motivation and level of engagement with the study (Doherty, et al. 2020; Geerharts, 2021).
+
+Jaso, et al (2021) note that, for ESM studies, the "closest "best-practice" standard for cleaning data is the tendency to remove participants who do not meet an a-priori compliance cut off defined by the percent of surveys completed " (3).
+
+However, excluding participants has several potential downsides, including "rejecting legitimate responses, reducing power, and reducing sample's representativness" (Ternovski, 2022). Furthermore the arbitrariness and large amount of researcher degrees of freedom for exclusion criteria can lead to multiple comparison problems, which can undermine the reproducibility of results (Steegen, et al. 2016; Gelman & Loken, 2013; Simonsohn, Simmons, & Nelson, 2020; Ioannidis, 2008). This is especially the case for exclusion criteria that are chosen post-hoc (Wicherts, et al. 2016: 5).
+
+Furthermore, it remains to be established whether low engagement users do systematically produce lower-quality data. Our understanding of the motivations, levels of carelessness, and quality of the data produced by low-engagement participants remains limited (Eveleigh, et al. 2014., Jaso, et al. 2021., Welling, et al. 2021).
+
+This paper uses data from Britain Breathing, a smartphone application-based ESM study on the symptoms of allergic rhinitis, and anti-hystamine prescription data from OpenPrescribe to explore whether low engagement users do provide less reliable data. Furthermore, by exploring several ways of operationalising engagement identified in the litterature, this paper tests how sensitive the impact of removing low-engagement participants to the operationalisation of engagement.
+
+Finally this paper explores whether demographic differences between high and low engagement users, the key factor in determining how much rejecting low-engagement users will affect the sample's representativeness, are sensitive to how engagement is operationalised.
+
+# Methods:
+
+## Data
+
+This paper uses data from the Britain Breathing project and from OpenPrescribing.net .
+
+*Britain breathing data:*
+
+The Britain Breathing project is a citizen science study which used an smartphone-based experience sampling approach to collecting geolocated time series data on seasonal pollen allergy symptoms, also referred to as allergic rhinitis or hay-fever (Vigo, et al. 2018).
+
+Participants are invited to download a mobile phone application and provide some basic information such as their gender, age, and allergy history. Users of the application can report symptoms at any time, and also at daily scheduled intervals. When they make a report, they are first asked how they are feeling. If they respond that they are feeling well, no further questions are asked, if they respond otherwise, they are asked further questions about the severity of various symptoms ("nose", "eyes, and "breathing"), which they report on a four point scale ranging from 0, which signifies an absence of symptoms, to 3, which indicates severe symptoms. However, a bug in the application meant that **some users** (XXXXgive numberXXXX)
+
+Available further information includes the gender of participants, their date of birth, known allergies, whether or not they are taking antihistamine medication, and the date, time, and location of each report submitted.
+
+The data has good geographical coverage, with reports submitted from 119 out of 124 (\~96%) postcode areas in the UK, with the average number of reports per postcode being 305.
+
+Three versions of the application were deployed, v2016, v1 and v2, the use of which is shown in Figure x.
+
+```{r, echo = FALSE}
+
+df %>% 
+  ggplot(aes(x = date,
+             fill = as_factor(version)))+
+  geom_histogram(bins = 250, col = "grey", size = 0.1)+
+  scale_x_date(date_breaks = '6 months')+
+  scale_y_continuous(breaks = seq(0, 1825, 250))+
+  #scale_y_sqrt()+
+  #scale_y_log10()+
+  scale_fill_manual(values=c("orange", "yellow","green4" ))+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+
+  labs(fill = "Version:", x = "", y = "Number of reports")
+
+```
+
+*NHS England prescription data:*
+
+As a means of validating the data collected using the Britain Breathing application, Vigo, et al (2018) look at the correlation between the median lack of wellness reported on the Britain Breathing application and the number of antihistamines prescribed by general practitioners, finding that they are very strongly (r = 0.93) correlated. This data is openly available from OpenPrescribing.net.
+
+## Analytical approach
+
+### *Clustering by level of engagement*
+
+The way in which engagement is understood and operationalised varies a lot between scholars and fields (Perski, et al. 2017, Yardley, et al. 2016). This paper seeks to establish how sensitive the impact of removing disengaged users is to the way engagement is operationalised.
+
+*Threshold methods*
+
+Jaso, et al (2021) describe a general trend in the EMA/ESM literature to only include participants with a 70%--90% compliance rate, highlighting that this is often selected by convention and not empirically determined (2021:3). For example Sun, et al (2020) consider participants who completed less than 10 assessments to be unengaged, and excluded them for their analysis.
+
+A more data driven applicationroach is found in a study by Kronkvist and Engstrom (2020), who split their participants into *abstainers*, who completed zero assessments, *dedicated participants* who completed a number of assessments one standard deviation or more above the average number of assessments completed by participants, and *occasional participants* who did not meet the criteria for the two previous groups.
+
+*Hidden Markov models*
+
+Druce, et al (2017) argue such approaches overlook the complexity of patterns of engagement. For example a participant may be strongly engaged with the application for a week, carefully filling in assessments every day, before having to cease contributing for various reasons. Under the approaches described above such contributions would not be labeled as highly engaged (and potentially excluded from analysis) for either missing a threshold such as 10 contributions, or for being below some deviation from the mean number of contributions.
+
+Instead, they propose using first order hidden Markov models...
+
+Participants were coded as engaged on a given day if they made at least one contribution to the application. This variable was assumed to be the result of participants being in one of three latent states of engagement
+
+*Comparing with prescription data*
+
+Data on antihistamine prescriptions is available from OpenPrescribing at the Clinical Commissioning Group (*CCG*) level. To enable comparisons with Britain Breathing data, reports were assigned to the CCG areas in which they were submitted using the sf package (Pebesma, 2018).
+
+Vigo, et al (2018)... **XXXX I started to write up what had been done in vigo et al here before outlining what i planned to do, but it's not actually clear what was done in the original paper XXXX**
+
+**\<---- Note: Amount vs Quantity**
+
+**From the Open prescribe website:**
+
+**"*Items* counts the number of times a medicine has been prescribed. It says nothing about how much of it has been prescribed (for that see [quantity](https://openprescribing.net/faq/#prescquantity)) as some presciptions will be for many weeks' worth of treatment while others will be much smaller.**
+
+***Quantity*** **is the total amount of a medicine that has been prescribed, but the units used depend on the particular form the medicine is in"**
+
+**I'm not sure exactly which variable to use here, items would seem to indicate how often people go to the doctor with Hayfever problems, quantity is the amount that has been prescribed, which I would assume is more to do with the gp's personal preferences than the patients? (my personal experience with hayfever has been to just buy over the counter loratadine, rather than go through the NHS, which can take weeks)**
+
+\
+\<----
+
+### Group differences
+
+To asses the impact of removing unengaged participants, this paper compares the characteristics of respondents from engaged and unengaged groups.
+
+*Demographics*
+
+Previous studies have explored associations between engagement and demographic characteristics.
+
+Perski, et al (2017) report age, gender, education, employment and ethnicity as the most commonly found associations with engagement and attrition. Similarly, Druce, et al (2017) find that age differs notably between groups (with engaged participants being over 5 years older on average), and a substantially lower proportion of women were present in the "tourist" cluster. Kronkvist and Engstrom (2020) find that age and being female is associated with higher engagement in the study, as do Rintala, et al (2019). Turner, et al (2017) find that race/ethnicity, education, and age are are associated with higher levels of engagement.
+
+**(Would this \^ be better presented as a table?)**
+
+Britain breathing asks participants for their age and gender which will allow these characteristics to be compared. Furthermore the geotagged nature of the reports allows us to determine whether the reports are made in an urban or rural setting.
+
+*Symptom intensity*
+
+One possible factor in whether or not a participant chooses to contribute to the application on a given day may be the severity of the symptoms they are experiencing. Fig x shows that reports peak every year around pollen season. One possible mechanism is that as symptoms subside, participants stop reporting.
+
+```{r, echo = F}
+
+df %>%
+  drop_na(date) %>% 
+  mutate(pollen_season = if_else(lubridate::month(date) %in% c(3, 4, 5, 6, 7, 8),
+                                 "Yes",
+                                 "No")) %>% 
+  ggplot(aes(x = date, fill = as_factor(pollen_season)))+
+  geom_histogram(bins = 500, col = "grey", size = 0.001)+
+  scale_x_date(date_breaks = '6 months')+
+  #scale_y_continuous(breaks = seq(0, 1825, 250))+
+  scale_y_log10()+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+
+  labs(fill = "Pollen season:", x = "", y = "Number of reports")
+```
+
+\###*Correlation analysis*
+
+Vigo Vigo, et al (2018) look at the correlation between the median lack of wellness reported on the Britain Breathing application and the number of antihistamines prescribed by general practitioners, finding that they are very strongly (Pearson's r = 0.93) correlated.
+
+Pearson correlation coefficients are calculated between each engagement cluster and the number of antihistamine prescriptions.
+
+To test whether the correlation observed between the prescription data and the reported symptom intensity of low-engagement users was significantly different from the correlation observed between the prescription data and the reported symptom intensity of high-engagement users, the Fisher z-transformation (Fisher, 1921) was applied to each correlation coefficient.
+
+The difference between two z-transformed coefficients approximately follows a normal distribution with known variance, allowing p-values for the two-tailed hypothesis test that the difference between observed correlations is not zero to be calculated (Li, 2019).
+
+# Results
+
+## Descriptive results
+
+### *Separating data into years*
+
+![Fig x](images/years.png)
+
+Britain Breathing data is available from April 2016 to April 2021. There were 200 982 contributions by 4 748 participants in 2016, 74 183 contributions by 335 participants in 2017, 65 534 contributions by 269 participants in 2018, 19 115 contributions by 78 participants in 2019, 16 446 contributions by 52 participants in 2020, and 182 contributions by 9 users in 2021.
+
+Data was submitted throughout the year, with the exception of 2017, where data collection began in May, and in 2021, where data is available from January until the beginning of March
+
+Data was analysed for each year, with the exception of 2021, due to the limited amount and temporal coverage of data for that year (fig x).
+
+### Participation inequality
+
+A common feature of citizen science data is high levels of participation inequality (Hackley, 2016). This feature can also be seen in the Britain Britain data. A Gini score was calculated for the number of contributions per participant, finding a value of \~0.79 indicating a high level of inequality.
+
+```{r, eval=FALSE}
+#Measures of inequality
+
+counts <- df %>%
+   group_by(user_id) %>%
+   count() %>% ungroup()
+
+dineq::gini.wtd(counts$n)
+
+dineq::polar.wtd(counts$n)
+
+dineq::mld.wtd(counts$n)
+```
+
+Fig X shows how many participants have reported on a given number of days. The log-log scale makes clear that the overwhelmingly most common behavior was for participants to make a single contribution.
+
+This is in line with findings from (XXXX add Short list of projects which show single contributions (Jaso and geerharts?, or maybe not just esm XXXX).
+
+```{r, echo = FALSE, warning = FALSE}
+
+df %>%
+  group_by(user_id) %>% 
+  dplyr::filter(row_number()==1) %>%
+  ggplot(aes(x = duration_days)) +
+  geom_histogram(bins = 50, col = "grey", size = 0.1)+
+  theme_minimal()+
+  scale_y_log10()+
+  scale_x_log10()+
+  labs(x = "Number of days in the study",
+       y = "Number of participants")
+
+```
+
+### Clusterings
+
+```{r, include=FALSE}
+dfy1 <- df %>% 
+  filter(lubridate::year(date) == 2016)
+
+dfy2 <- df %>% 
+  filter(lubridate::year(date) == 2017)
+
+dfy3 <- df %>% 
+  filter(lubridate::year(date) == 2018)
+
+dfy4 <- df %>% 
+  filter(lubridate::year(date) == 2019)
+
+dfy5 <- df %>% 
+  filter(lubridate::year(date) == 2020)
+```
+
+*Simple clusterings*
+
+The most common way of operationalising engagement is using contribution thresholds (Jaso, et al. 2021). According to this approach, a participant is considered to not have engaged with the study if they contribute less than a certain number of reports. Figure X shows how participants in the first year would be classified according to this approach using 4 thresholds: 1, 3, 5, and 10.
+
+```{r, echo = FALSE}
+p1 <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 1, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5000, 500),
+                     limits = c(0, 5000))+
+  labs(x = "Engagement (threshold = 1)", y = "Number of participants")+
+  theme_minimal()
+
+p2 <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 3, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5000, 500),
+                     limits = c(0, 5000))+
+  labs(x = "Engagement (threshold = 3)", y = "Number of participants")+
+  theme_minimal()
+
+p3 <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 5, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 5000, 500),
+                     limits = c(0, 5000))+
+  labs(x = "Engagement (threshold = 5)", y = "Number of participants")+
+  theme_minimal()
+
+p4 <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold = if_else(n > 10, "high", "low")) %>%
+  ggplot(aes(x = engagement_threshold))+
+  scale_y_continuous(breaks = seq(0, 5000, 500),
+                     limits = c(0, 5000))+
+  geom_bar()+
+  labs(x = "Engagement (threshold = 10)", y = "Number of participants")+
+  theme_minimal()
+
+(p1 | p2 ) /
+(p3 | p4)
+```
+
+```{r, include=FALSE}
+
+dfy1%>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>%
+  summarise(mean = mean(n),
+            stdev = sd(n))
+```
+
+Kronkvist and Engstrom (2020) split their participants into abstainers, who completed zero assessments, dedicated participants who completed a number of assessments one standard deviation or more above the average number of assessments completed by participants, and occasional participants who did not meet the criteria for the two previous groups. The mean number of contributions by participants in the first year of the study was \~4 and the standard deviation \~ 13. Figure X shows how participants would be classified according to this approach.
+
+```{r, echo=FALSE}
+df %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_kron = if_else(n > 17, "high", "low")) %>%
+  ggplot(aes(x = engagement_kron))+
+  geom_bar()+
+  theme_minimal()+
+  labs(x = "Engagement", y = "Number of participants")
+```
+
+*Hidden Markov Models*
+
+Druce, et al (2017) suggest using hidden Markov models as a better way of operationalising engagement. This paper applies the approach used in their paper to the Britain Breathing data.
+
+First dummy variable was created for whether or a participant had made a contribution on a given day. One limitation of this approach is that some participants very occasionally made more than one report in a single day, potentially indicating higher engagement.
+
+Hidden Markov models were then fit on this data using the depmixS4 R package (Visser, 2021) to estimate the latent level of each participant on a given day.
+
+The model assumed that whether or not a participant would contribute on a given day was explained by them being in one of three latent states, high engagement (with a probability of contributing of 0.7) , low engagement (with a probability of contributing of 0.1), and disengaged (with a probability of contributing set at 1e-10, as the software does not allow for values of zero).
+
+The disengaged state was assumed to be an absorbing state, meaning that once a participant was in the disengaged state, their probability of transitioning to another state was zero.
+
+The model also assumed that all participants were in the highly engaged state on the day they began the study.
+
+Finally participants were clustered according to the history of latent states inferred by the hidden Markov models using a Markov mixture model.
+
+```{r}
+
+#Loading these manually as they take a long time to run
+
+yr1_k4          <- readRDS(file = here::here("Clusterings", "yr1_k4"))
+     
+yr1_k4_clusters <- readRDS(file = here::here("Clusterings", "yr1_k4_clusters" ))
+
+yr2_k4          <- readRDS(file = here::here("Clusterings", "yr2_k4"))
+     
+yr2_k4_clusters <- readRDS(file = here::here("Clusterings", "yr2_k4_clusters" )) 
+
+yr3_k4          <- readRDS(file = here::here("Clusterings", "yr3_k4"))
+     
+yr3_k4_clusters <- readRDS(file = here::here("Clusterings", "yr3_k4_clusters" )) 
+
+yr4_k4          <- readRDS(file = here::here("Clusterings", "yr4_k4"))
+     
+yr4_k4_clusters <- readRDS(file = here::here("Clusterings", "yr4_k4_clusters" )) 
+
+yr5_k4          <- readRDS(file = here::here("Clusterings", "yr5_k4"))
+     
+yr5_k4_clusters <- readRDS(file = here::here("Clusterings", "yr5_k4_clusters" )) 
+```
+
+Using the elbow heuristic for detecting the optimal number of clusters we find that 4 clusters is optimal.
+
+**XXXX We don't actually find this at all this time, I found this the forst time I ran this and it is the most common result (there are also other reasons, mostly ease of interpretations, and consistency with the cloudy paper, why this is preferable). Also, things are much more consistant after the second year, likely a reflection of a smaller about of latent behaviours groupings given less participants XXXX**
+
+![](images/elbow8.png)
+
+|             |                            |
+|-------------|----------------------------|
+| **Cluster** | **Number of participants** |
+| **1**       | 526                        |
+| **2**       | 475                        |
+| **3**       | 3460                       |
+| **4**       | 287                        |
+
+50 participants were randomly sampled from the study and visualized in figures x and x. Figure x shows the daily latent state assigned to the participants by the hidden Markov model, and the cluster assigned to the participant by the Markov mixture model. Figure x shows days on which the participant make a contribution, and the final cluster assigned to the participant by the Markov mixture model. **(I need to fix the x axis labels on these)**
+
+![](images/y5.png)
+
+![](images/y5b.png)
+
+Visually we can distinguish four reporting behaviors high (cluster 4, 526/4748), medium (cluster 2, 475/4784), low (cluster 4, 278/4784), and tourist (cluster 1, 3460/4748).
+
+```{r, echo = F}
+
+counts_by_cluster <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  left_join(yr1_k4_clusters,by = "user_id")
+
+counts_by_cluster %>% 
+  ggplot(aes(x = cluster))+
+  geom_bar()+
+  scale_y_continuous(breaks = seq(0, 3500, 500),
+                     limits = c(0, 3500))+
+  labs(x = "Cluster", y = "Number of participants")+
+  theme_minimal()
+
+#
+#counts_by_cluster %>% 
+#  group_by(cluster) %>% 
+# summarise(mean = mean(n),
+#           median = median(n))
+```
+
+### Group differences
+
+*Year 1*
+
+```{r, eval=F}
+y1clust <- dfy1 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low"))%>% 
+  left_join(yr1_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy1,by = "user_id") %>% 
+  mutate(age = 2016- as.numeric(year_of_birth))
+
+y1clust %>%
+  group_by(cluster) %>%
+  summarise(mean_age = mean(age))
+
+beh <- y1clust %>%
+  group_by(cluster) %>%
+  count(gender)
+
+beh <- y1clust %>%
+  group_by(cluster) %>%
+  count()
+
+
+
+tribble(
+  ~Cluster, ~"High engagement", ~"Medium engagement",~"Low engagement",~"Tourists",
+  "Female (%)",   1,
+  "b",   2,
+  "c",   3
+)
+```
+
+*Year 2*
+
+*Year 3*
+
+*Year 4*
+
+*Year 5*
+
+### Correlation analysis
+
+NHS prescription data is available from OpenPrescribing.net. However this data is only available for prescriptions made in England. Reports made outside of England (1697, or \~8.4% of reports) were therefore removed from the data, as they could not be linked to prescription data.
+
+With all data included, the Pearson coefficient for the correlation between symptom intensity and the number of prescribed items was 0.68 for year one, 0.79 for year two, 0.93 for year three, 0.52 for year four, and 0.21 for year five.
+
+```{r, echo=FALSE}
+
+
+ cor_significance_test <- function(truth, x1, x2, method="pearson") {
+   n <- length(truth)
+   cor1 <- cor(truth, x1, method=method)
+   cor2 <- cor(truth, x2, method=method)
+   fisher1 <- 0.5*log((1+cor1)/(1-cor1))
+   fisher2 <- 0.5*log((1+cor2)/(1-cor2))
+   if(method == "pearson") {
+     expected_sd <- sqrt(1/(n-3))
+   }
+   else if(method == "spearman") {
+     expected_sd <- sqrt(1.060/(n-3))
+   }
+   2*(1-pnorm(abs(fisher1-fisher2), sd=expected_sd))
+ }
+ 
+
+```
+
+*Threshold approaches*
+
+*Year 1*
+
+For a threshold of 1, the correlation with low-engagement reports was \~0.51, the correlation with high-engagement reports was \~0.71. The difference is not statistically significant with a p-value of \~0.43.
+
+For a threshold of 3, the correlation with low-engagement reports was \~0.55, the correlation with low-engagement reports was \~0.76. The difference is not statistically significant with a p-value of \~0.36.
+
+For a threshold of 5, the correlation with low-engagement reports was \~0.53, the correlation with high-engagement reports was \~0.76. The difference is not statistically significant with a p-value of \~0.32.
+
+For a threshold of 10, the correlation with low-engagement reports was \~0.56, the correlation with high-engagement reports was \~0.81. The difference is not statistically significant with a p-value of \~0.22.
+
+```{r, eval=FALSE}
+ letest <-  dfy1 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   left_join(yr1_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+  filter(engagement_threshold_5 == "high") %>%
+   left_join(dfy1,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_how = mean(how_im_doing),
+             median_how = median(how_im_doing)) %>%
+   left_join(presc_vigo, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_how) 
+
+
+
+ letest2 <- dfy1 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   left_join(yr1_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+  filter(engagement_threshold_5 == "low") %>%
+   left_join(dfy1,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_how2 = mean(how_im_doing),
+             median_how = median(how_im_doing)) %>%
+   left_join(presc_vigo, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_how2)  
+ 
+
+   
+ combined <- letest2 %>% select(`lubridate::month(date)`,
+                             mean_how2) %>% 
+   left_join(letest)
+ 
+cor(combined$items, combined$mean_how, method= "pearson")
+
+cor(combined$items, combined$mean_how2, method= "pearson") 
+ 
+cor_significance_test(combined$items, combined$mean_how, combined$mean_how2, method="pearson")
+```
+
+*Year 2*
+
+For a threshold of 1, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.85. The difference is not statistically significant with a p-value of \~0.47.
+
+For a threshold of 3, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.75. The difference is not statistically significant with a p-value of \~0.16.
+
+For a threshold of 5, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.74. The difference is not statistically significant with a p-value of \~0.16.
+
+For a threshold of 10, the correlation with high-engagement reports was \~0.91, the correlation with low-engagement reports was \~0.84. The difference is not statistically significant with a p-value of \~0.49.
+
+```{r, eval=FALSE}
+ presc_y2 <- presc %>% 
+   filter(lubridate::year(date) == 2017) %>%
+   mutate(month = lubridate::month(date)) %>% 
+   group_by(month) %>% 
+   summarise(sum = sum(items))
+
+
+ letest <-  dfy2 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   left_join(yr2_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+  filter(engagement_threshold_10 == "high") %>%
+   left_join(dfy2,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_how = mean(nose),
+             median_how = median(nose)) %>%
+   left_join(presc_y2, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_how) 
+
+
+
+ letest2 <- dfy2 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   left_join(yr2_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+  filter(engagement_threshold_10 == "low") %>%
+   left_join(dfy2,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   filter(lubridate::month(date) != 4) %>% 
+   summarise(reports = n(),
+             mean_how2 = mean(nose),
+             median_how = median(nose)) %>%
+   left_join(presc_y2, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_how2)  
+ 
+
+   
+combined <- letest2 %>% select(`lubridate::month(date)`,
+                             mean_how2) %>% 
+   left_join(letest)
+ 
+cor(combined$sum, combined$mean_how, method= "pearson")
+
+cor(combined$sum, combined$mean_how2, method= "pearson") 
+ 
+cor_significance_test(combined$sum, combined$mean_how, combined$mean_how2, method="pearson")
+ 
+```
+
+*Year 3*
+
+For a threshold of 1, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.52. The difference is statistically significant with a p-value of \~0.003.
+
+For a threshold of 3, the correlation with high-engagement reports was \~0.93, the correlation with low-engagement reports was \~0.68. The difference is statistically significant with a p-value of \~0.018.
+
+For a threshold of 5, the correlation with high-engagement reports was \~0.93, the correlation with low-engagement reports was \~0.69. The difference is statistically significant with a p-value of \~0.016.
+
+For a threshold of 10, the correlation with high-engagement reports was \~0.92, the correlation with low-engagement reports was \~0.73. The difference is statistically significant with a p-value of \~0.042.
+
+```{r, eval = F}
+
+ presc_y3 <- presc %>% 
+   filter(lubridate::year(date) == 2018) %>%
+   mutate(month = lubridate::month(date)) %>% 
+   group_by(month) %>% 
+   summarise(sum = sum(items))
+
+
+ letest <-  dfy3 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "high") %>% 
+   left_join(yr3_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy3,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ 
+ letest2 <-  dfy3 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "low") %>% 
+   left_join(yr3_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy3,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             mean_nose2 = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ test2 <- letest2 %>% select(`lubridate::month(date)`,
+                             mean_nose2) %>% 
+   left_join(letest)
+ 
+ 
+
+ 
+cor(test2$sum, test2$mean_nose, method= "pearson")
+
+cor(test2$sum, test2$mean_nose2, method= "pearson") 
+
+cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
+ 
+```
+
+*Year 4*
+
+For a threshold of 1, the correlation with high-engagement reports was \~0.70, the correlation with high-engagement reports was \~0.18. The difference is not statistically significant with a p-value of \~0.09.
+
+For a threshold of 3, the correlation with high-engagement reports was \~0.45, the correlation with high-engagement reports was \~0.32. The difference is not statistically significant with a p-value of \~0.70.
+
+For a threshold of 5, the correlation with high-engagement reports was \~0.44, the correlation with high-engagement reports was \~0.38. The difference is not statistically significant with a p-value of \~0.85.
+
+For a threshold of 10, the correlation with high-engagement reports was \~0.44, the correlation with high-engagement reports was \~0.49. The difference is not statistically significant with a p-value of \~0.84.
+
+```{r, eval = F}
+
+ presc_y4 <- presc %>% 
+   filter(lubridate::year(date) == 2019) %>%
+   mutate(month = lubridate::month(date)) %>% 
+   group_by(month) %>% 
+   summarise(sum = sum(items))
+
+
+ letest <-  dfy4 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "high") %>% 
+   left_join(yr4_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy4,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y4, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ 
+ letest2 <-  dfy4 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "low") %>% 
+   left_join(yr4_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy4,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             mean_nose2 = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y4, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ test2 <- letest2 %>% select(`lubridate::month(date)`,
+                             mean_nose2) %>% 
+   left_join(letest)
+ 
+ 
+
+ 
+cor(test2$sum, test2$mean_nose, method= "pearson")
+
+cor(test2$sum, test2$mean_nose2, method= "pearson") 
+
+cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
+ 
+```
+
+*Year 5*
+
+For a threshold of 1, the correlation with high-engagement reports was \~0.17, the correlation with high-engagement reports was \~0.36. The difference is not statistically significant with a p-value of \~0.72.
+
+For a threshold of 3, the correlation with high-engagement reports was \~0.23, the correlation with high-engagement reports was \~0.42. The difference is not statistically significant with a p-value of \~0.57.
+
+For a threshold of 5, the correlation with high-engagement reports was \~0.19, the correlation with high-engagement reports was \~0.48. The difference is not statistically significant with a p-value of \~0.48.
+
+For a threshold of 10, the correlation with high-engagement reports was \~0.22, the correlation with high-engagement reports was \~0.39. The difference is not statistically significant with a p-value of \~0.63.
+
+```{r, eval = F}
+
+ presc_y5 <- presc %>% 
+   filter(lubridate::year(date) == 2020) %>%
+   mutate(month = lubridate::month(date)) %>% 
+   group_by(month) %>% 
+   summarise(sum = sum(items))
+
+
+ letest <-  dfy5 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "high") %>% 
+   left_join(yr5_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy5,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y5, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ 
+ letest2 <-  dfy5 %>%
+   group_by(user_id) %>%
+   count() %>%
+   ungroup() %>% 
+   mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+          engagement_threshold_3 = if_else(n > 3, "high", "low"),
+          engagement_threshold_5 = if_else(n > 5, "high", "low"),
+          engagement_threshold_10 = if_else(n > 10, "high", "low"),
+          engagement_kron = if_else(n > 17, "high", "low")) %>% 
+   filter(engagement_threshold_10 == "low") %>% 
+   left_join(yr5_k4_clusters,by = "user_id") %>% 
+   dplyr::select(-prob.1,
+                 -prob.2,
+                 -prob.3,
+                 -prob.4,
+                 -n) %>% 
+   left_join(dfy5,by = "user_id") %>%  
+   group_by(lubridate::month(date)) %>%
+   summarise(reports = n(),
+             mean_nose = mean(nose),
+             mean_nose2 = mean(nose),
+             median_nose = median(nose)) %>%
+   left_join(presc_y5, by = c( "lubridate::month(date)" = "month" )) %>% 
+   drop_na(mean_nose) 
+ 
+ test2 <- letest2 %>% select(`lubridate::month(date)`,
+                             mean_nose2) %>% 
+   left_join(letest)
+ 
+ 
+
+ 
+cor(test2$sum, test2$mean_nose, method= "pearson")
+
+cor(test2$sum, test2$mean_nose2, method= "pearson") 
+
+cor_significance_test(test2$sum, test2$mean_nose, test2$mean_nose2, method="pearson")
+ 
+```
+
+#### Permutation testing
+
+```{r}
+#Creating a df of regression coefficients
+coefs <- tribble(
+    ~high, ~low,  ~year,
+    0.51,   0.71, "2016",
+    0.55,   0.76, "2016",
+    0.53,   0.76, "2016",
+    0.56,   0.81, "2016",
+    0.92,   0.85, "2017",
+    0.92,   0.75, "2017",
+    0.92,   0.74, "2017",
+    0.91,   0.84, "2017",
+    0.92,   0.52, "2018",
+    0.93,   0.68, "2018",
+    0.93,   0.69, "2018",
+    0.92,   0.73, "2018",
+    0.70,   0.18, "2019",
+    0.45,   0.32, "2019",
+    0.44,   0.38, "2019",
+    0.44,   0.49, "2019",
+    0.17,   0.36, "2020",
+    0.23,   0.42, "2020",
+    0.19,   0.48, "2020",
+    0.22,   0.39, "2020")
+
+coefs$index <- 1:nrow(coefs)
+
+# Testing for independance
+
+independence_test(high ~ low,
+                  data = coefs)
+
+# Using weights
+
+weights <- tribble(
+  ~year, ~weight,
+  "2016", 20098/37906,
+  "2017", 7418/37906,
+  "2018", 6553/37906,
+  "2019", 1911/37906,
+  "2020", 1644/37906)
+
+weights <- tribble(
+  ~year, ~weight,
+  "2016", 20098,
+  "2017", 7418,
+  "2018", 6553,
+  "2019", 1911,
+  "2020", 1644) 
+
+coefs <- coefs %>%
+  left_join(weights, by = "year")
+
+independence_test(low ~high,
+                  data = coefs,
+                  weights = ~weight)
+
+
+```
+
+A permutation test of independence was conducted using the coin package (Hothorn, et al. 2008). The null hypothesis that there was no difference between low and high engagement groups was rejected with a p value of 2.2 X 10 \^-16.
+
+Threshold of 1.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 2.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_2 = if_else(n > 2, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_2 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_2 = if_else(n > 2, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_2 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 3.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 5.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+Threshold of 10.
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "High" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Low")
+
+p1|p2
+```
+
+HMM thresholds
+
+1 = tourist, 3 = low, 2 = medium, 4 = high
+
+```{r, echo = F}
+letest <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>%   
+  filter(cluster == 1) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+
+letest2 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 2) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+letest3 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 3) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose)
+
+letest4 <-  dfy3 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>%
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy3,by = "user_id") %>% 
+  filter(cluster == 4) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y3, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose)
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose, title = "Tourist" )
+
+
+p2 <- letest2 %>%
+  ggscatterstats(sum, mean_nose, title = "Medium")
+
+p3 <- letest3 %>%
+  ggscatterstats(sum, mean_nose, title = "Low" )
+
+
+p4 <- letest4 %>%
+  ggscatterstats(sum, mean_nose, title = "High")
+
+(p1|p3)/(p2|p4)
+```
+
+*Year 4*
+
+```{r}
+presc_y4 <- presc %>% 
+  filter(lubridate::year(date) == 2019) %>%
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(sum = sum(items))
+
+
+
+letest <-  dfy4 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr4_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy4,by = "user_id") %>%  
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y4, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose)
+
+p2 <- letest %>%
+  ggscatterstats(sum, median_nose)
+
+p1|p2
+```
+
+*Year 5*
+
+```{r}
+
+presc_y5 <- presc %>% 
+  filter(lubridate::year(date) == 2020) %>%
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(sum = sum(items))
+
+letest <-  dfy5 %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  left_join(yr5_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(dfy5,by = "user_id") %>%  
+  drop_na(how_im_doing) %>% 
+  group_by(lubridate::month(date)) %>%
+  summarise(reports = n(),
+            mean_nose = mean(nose),
+            median_nose = median(nose)) %>%
+  left_join(presc_y2, by = c( "lubridate::month(date)" = "month" )) %>% 
+  drop_na(mean_nose) 
+
+p1 <- letest %>%
+  ggscatterstats(sum, mean_nose)
+
+p2 <- letest %>%
+  ggscatterstats(sum, median_nose)
+
+p1|p2
+
+```
+
+### Antonym analysis
+
+In all versions of the application, users were asked about their nose, eyes, and breathing symptoms. in version v2016 and v2 users were also asked "How are you feeling today?" with the possible answers being "Great" (0) , "So-so" (1), and "Bad" (2).
+
+| Version | **How are you feeling today?** | Symptoms | n      |
+|---------|--------------------------------|----------|--------|
+| v2016   | Yes                            | Yes      | 20 098 |
+| v1      | No                             | Yes      | 17 084 |
+| v2      | Yes                            | Yes      | 624    |
+
+The scores for how_im_doing and individual symptoms can be considered antonyms.
+
+Jaso, et al (2016) define psychometric antonyms as "items that theoretically or logically should have a large difference" (2016: 4).
+
+In the case of the Britain Breathing data, we might logically expect that participants who report feeling "Bad" have high symptoms, and participants who report feeling "Great" have lower symptoms.
+
+*Year one*
+
+```{r}
+p1 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = nose))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+  
+p2 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = eyes))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw() 
+  
+p3 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = breathing))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+
+p1|p2|p3 
+
+  
+```
+
+**This seems too perfect! I don't find it plausible that *not a single person (out of* \~9 000) who said they were feeling great reported any symptoms, even mild ones. Is this a coding artifact? If nothing else, you'd think someone's finger would slip eventually**
+
+*Year 1*
+
+*Threshold of 1*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id") %>%
+  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")%>%
+  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 3*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id") %>%
+  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")%>%
+  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 5*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")
+#%>%
+#  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")#%>%
+#  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 10*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")
+#%>%
+#  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")#%>%
+#  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+Year 2
+
+*Threshold of 1*
+
+```{r}
+letest <-  df %>%
+  filter(version == "v2") %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>% 
+  filter(version == "v2"),
+         by = "user_id") %>%
+  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(version == "v2") %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_1 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>% 
+  filter(version == "v2"),
+         by = "user_id")%>%
+  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 3*
+
+```{r}
+letest <-  df %>%
+  filter(version == "v2") %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>% 
+  filter(version == "v2"),
+         by = "user_id") %>%
+  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(version == "v2") %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_3 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>% 
+  filter(version == "v2"),
+         by = "user_id")%>%
+  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 5*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")
+#%>%
+#  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_5 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")#%>%
+#  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+*Threshold of 10*
+
+```{r}
+letest <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "low") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")
+#%>%
+#  filter(how_im_doing != 0)
+
+
+letest2 <-  df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  group_by(user_id) %>%
+  count() %>%
+  ungroup() %>% 
+  mutate(engagement_threshold_1 = if_else(n > 1, "high", "low"),
+         engagement_threshold_3 = if_else(n > 3, "high", "low"),
+         engagement_threshold_5 = if_else(n > 5, "high", "low"),
+         engagement_threshold_10 = if_else(n > 10, "high", "low"),
+         engagement_kron = if_else(n > 17, "high", "low")) %>% 
+  filter(engagement_threshold_10 == "high") %>% 
+  left_join(yr3_k4_clusters,by = "user_id") %>% 
+  dplyr::select(-prob.1,
+          -prob.2,
+          -prob.3,
+          -prob.4,
+          -n) %>% 
+  left_join(df %>%
+  filter(lubridate::year(date) == 2016),
+         by = "user_id")#%>%
+#  filter(how_im_doing != 0)
+
+
+p1 <- letest %>%
+  ggscatterstats(how_im_doing, nose, title = "Low", type = "non-parametric")
+
+
+p2 <- letest2 %>%
+  ggscatterstats(how_im_doing, nose, title = "High", type = "non-parametric")
+
+p3 <- letest %>%
+  ggscatterstats(how_im_doing, eyes, title = "Low", type = "non-parametric")
+
+
+p4 <- letest2 %>%
+  ggscatterstats(how_im_doing, eyes, title = "High", type = "non-parametric")
+
+p5 <- letest %>%
+  ggscatterstats(how_im_doing, breathing, title = "Low", type = "non-parametric")
+
+
+p6 <- letest2 %>%
+  ggscatterstats(how_im_doing, breathing, title = "High", type = "non-parametric")
+p1|p2
+p3|p4
+p5|p6
+```
+
+```{r}
+p1 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020, 2021)) %>%
+  ggplot(aes(x = how_im_doing, y = nose))+
+  geom_jitter(alpha = 0.2, )+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+  
+p2 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020)) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = eyes))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw() 
+  
+p3 <- df %>%
+  filter(lubridate::year(date) %in% c(2019,2020)) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = breathing))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+
+p1|p2|p3
+```
+
+**Similar here, but even stranger, not a single person who said they were feeling bad reported any symptoms?**
+
+*Year one*
+
+```{r}
+{r}
+p1 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = nose))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+  
+p2 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = eyes))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw() 
+  
+p3 <- df %>%
+  filter(lubridate::year(date) == 2016) %>%
+  drop_na(how_im_doing,
+          nose) %>%
+  ggplot(aes(x = how_im_doing, y = breathing))+
+  geom_jitter(alpha = 0.2)+
+  geom_smooth(method = "lm")+
+  scale_x_continuous(breaks = seq(0, 2, 1))+
+  theme_bw()
+
+p1|p2|p3 
+```
+
+```{r}
+p1 <- df %>% 
+  drop_na(how_im_doing,
+          nose) %>%
+  ggscatterstats(how_im_doing, nose)
+
+p2 <- df %>% 
+  drop_na(how_im_doing,
+          eyes) %>%
+  ggscatterstats(how_im_doing, eyes)
+
+p3 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(how_im_doing, breathing)
+
+
+p4 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(how_im_doing, breathing, type = "non-parametric")
+
+
+p5 <- df %>% 
+  drop_na(how_im_doing,
+          breathing) %>%
+  ggscatterstats(nose, breathing, type = "non-parametric")
+
+
+p3|p4|p5
+
+p1|p2|p3
+  
+```
+
+# Results
+
+# Discussion
+
+# Conclusion
+
+# References
+
+Aceves-Bueno, E., Adeleye, A. S., Feraud, M., Huang, Y., Tao, M., Yang, Y., & Anderson, S. E. (2017). The accuracy of citizen science data: a quantitative review. *Bulletin of the Ecological Society of America*, *98*(4), 278-290.
+
+Basiri, A., Haklay, M., Foody, G., & Mooney, P. (2019). Crowdsourced geospatial data quality: Challenges and future directions. *International Journal of Geographical Information Science*, *33*(8), 1588-1593.
+
+Balázs, B., Mooney, P., Nováková, E., Bastin, L., & Arsanjani, J.J (2021). "Data Quality in Citizen Science" in Vohland, K., Land-Zandstra, A., Ceccaroni, L., Lemmens, R., Perelló, J., Ponti, M., ... & Wagenknecht, K. *The science of citizen science*. Springer Nature.
+
+Brovelli, M. A., Minghini, M., Molinari, M., & Mooney, P. (2017). Towards an automated comparison of OpenStreetMap with authoritative road datasets. *Transactions in GIS*, *21*(2), 191-206.
+
+Druce, K. L., McBeth, J., van der Veer, S. N., Selby, D. A., Vidgen, B., Georgatzis, K., ... & Dixon, W. G. (2017). Recruitment and ongoing engagement in a UK smartphone study examining the association between weather and pain: cohort study. JMIR mHealth and uHealth, *5*(11), e168.
+
+Elliott, K. C., & Rosenberg, J. (2019). Philosophical foundations for citizen science. *Citizen Science: Theory and Practice*, *4*(1).
+
+Fisher, R. A. (1921). 014: On the" Probable Error" of a Coefficient of Correlation Deduced from a Small Sample. *Metron*, 1, 1-32.
+
+Fonte, C.C., Antoniou, V., Bastin, L., Estima, J., Arsanjani, J.J., Bayas, J.C.L., See, L. and Vatseva, R. (2017). Assessing VGI data quality. *Mapping and the citizen sensor*, 137-163.
+
+Haklay, M. E. (2016). Why is participation inequality important?. Ubiquity Press.
+
+Hothorn T, Hornik K, van de Wiel MA, Zeileis A (2008). "Implementing a class of permutation tests: The coin package." \_Journal of Statistical Software\_, \*28\*(8), 1-23.
+
+Jaso, B. A., Kraus, N. I., & Heller, A. S. (2021). Identification of careless responding in ecological momentary assessment research: From posthoc analyses to real-time data monitoring. Psychological Methods.
+
+Johnson, P. A., & Sieber, R. E. (2013). Situating the adoption of VGI by government. In *Crowdsourcing geographic knowledge* (pp. 65-81). Springer, Dordrecht.
+
+Kronkvist, K., & Engström, A. (2020). Feasibility of gathering momentary and daily assessments of fear of crime using a smartphone application (STUNDA): Methodological considerations and findings from a study among Swedish university students. *Methodological Innovations*, *13*(3), 2059799120980306.
+
+Lukyanenko, R., Parsons, J., & Wiersma, Y. F. (2016). Emerging problems of data quality in citizen science. *Conservation Biology*, *30*(3), 447-449.
+
+McGonagle, A. K., Huang, J. L., & Walsh, B. M. (2016). Insufficient effort survey responding: An under‐appreciated problem in work and organisational health psychology research. *Applied Psychology*, *65*(2), 287-321.
+
+Minghini, M., Antoniou, V., Fonte, C.C., Estima, J., Olteanu-Raimond, A.M., See, L., Laakso, M., Skopeliti, A., Mooney, P., Jokar Arsanjani, J. and Lupia, F. (2017). "The relevance of protocols for VGI collection." in
+
+OpenPrescribing.net ( *2022). The DataLab, University of Oxford.* Available online: <https://openprescribing.net> Last accessed: XXXX
+
+Pebesma, E. J. (2018). Simple features for R: standardized support for spatial vector data. *R J.*, *10*(1), 439.
+
+Perski, O., Blandford, A., West, R., & Michie, S. (2017). Conceptualising engagement with digital behaviour change interventions: a systematic review using principles from critical interpretive synthesis. *Translational behavioural medicine*, *7*(2), 254-267.
+
+Riesch, H., & Potter, C. (2014). Citizen science as seen by scientists: Methodological, epistemological and ethical dimensions. *Public understanding of science*, *23*(1), 107-120.
+
+Samulowska, M., Chmielewski, S., Raczko, E., Lupa, M., Myszkowska, D., & Zagajewski, B. (2021). Crowdsourcing without Data Bias: Building a Quality Assurance System for Air Pollution Symptom Mapping. *ISPRS International Journal of Geo-Information*, *10*(2), 46.
+
+Sun, J., Rhemtulla, M., & Vazire, S. (2020). Eavesdropping on Missing Data: What Are University Students Doing When They Miss Experience Sampling Reports?. Personality and Social Psychology Bulletin, 0146167220964639.
+
+Ternovski, J., & Orr, L. (2022). A Note on Increases in Inattentive Online Survey-Takers Since 2020. *Journal of Quantitative Description: Digital Media*, *2*.
+
+Trojan, J., Schade, S., Lemmens, R., & Frantál, B. (2019). Citizen science as a new approach in Geography and beyond: Review and reflections. Moravian Geographical Reports, 27(4), 254-264.
+
+Vigo, M., Hassan, L., Vance, W., Jay, C., Brass, A., & Cruickshank, S. (2018). Britain Breathing: using the experience sampling method to collect the seasonal allergy symptoms of a country. *Journal of the American Medical Informatics Association*, *25*(1), 88-92.
+
+Visser,I & Maarten Speekenbrink (2010). depmixS4: An R Package for Hidden Markov Models. *Journal of Statistical Software*, 36(7), 1-21. URL <https://www.jstatsoft.org/v36/i07/.>
+
+Wiggins, A., & Wilbanks, J. (2019). The rise of citizen science in health and biomedical research. The American Journal of Bioethics, 19(8), 3-14.
+
+Yardley, L., Spring, B. J., Riper, H., Morrison, L. G., Crane, D. H., Curtis, K., ... & Blandford, A. (2016). Understanding and promoting effective engagement with digital behaviour change interventions. *American journal of preventive medicine*, *51*(5), 833-842.
+
+# Supplementary materials:
+
+The code for this project is available at <https://github.com/NathanKhadaroo/BB_Paper>.
+
+The data for this project is not publicly available due to its potentially sensitive nature; however, researchers may request access from **XXXX who? XXXX**
