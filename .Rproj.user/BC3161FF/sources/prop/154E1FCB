@@ -1,13 +1,14 @@
 {
     "source_window_id": "",
     "Source": "Source",
-    "cursorPosition": "1008,0",
-    "scrollLine": "0",
-    "last_setup_crc32": "",
-    "rmdVisualMode": "true",
+    "cursorPosition": "1202,0",
+    "scrollLine": "1202",
+    "last_setup_crc32": "012D7EB7334ce3e4",
+    "rmdVisualMode": "false",
     "rmdVisualWrapConfigured": "true",
     "docOutlineVisible": "1",
-    "rmdVisualModeLocation": "2:0",
-    "rmdVisualCollapsedChunks": "1,1918,11130,16955,19694",
-    "docOutlineSize": "105"
+    "rmdVisualModeLocation": "46378:21783",
+    "rmdVisualCollapsedChunks": "",
+    "docOutlineSize": "105",
+    "ignored_words": "OpenPrescribing,geolocated,Vigo,al\n"
 }
